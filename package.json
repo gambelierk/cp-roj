@@ -1,0 +1,13 @@
+{
+  "name": "cp-roj",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CP-Röj – Röj-spel med egna ikoner, admin och topplista, för inbäddning på Shopify.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

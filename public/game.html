@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CP-Röj</title>
+<link rel="stylesheet" href="/static/game.css">
+</head>
+<body>
+<main class="app">
+  <div class="window bevel-out">
+    <div class="titlebar"><span id="title">CP-Röj</span></div>
+
+    <div class="toolbar">
+      <div class="levels" role="group" aria-label="Svårighetsgrad">
+        <button type="button" class="btn bevel-out" data-level="beginner" aria-pressed="true">Nybörjare</button>
+        <button type="button" class="btn bevel-out" data-level="intermediate" aria-pressed="false">Medel</button>
+        <button type="button" class="btn bevel-out" data-level="expert" aria-pressed="false">Expert</button>
+      </div>
+      <button type="button" class="btn bevel-out flag-mode" id="flagMode" aria-pressed="false" title="Flagga-läge (för mobil)">
+        <svg class="flag-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h1.5v10H5z" fill="currentColor"/><path d="M6.5 2 12 4.75 6.5 7.5z" class="flag-cloth"/><path d="M3 12.5h6V14H3z" fill="currentColor"/></svg>
+        <span>Flagga</span>
+      </button>
+    </div>
+
+    <div class="game bevel-in-soft" id="game">
+      <div class="header bevel-in">
+        <div class="counter" id="mineCounter" aria-label="Minor kvar">010</div>
+        <button type="button" class="face bevel-out" id="face" aria-label="Nytt spel">🙂</button>
+        <div class="counter" id="timer" aria-label="Tid">000</div>
+      </div>
+      <div class="board-scroll" id="boardScroll">
+        <div class="board bevel-in" id="board" role="grid" aria-label="Spelplan"></div>
+      </div>
+
+      <div class="overlay" id="winOverlay" hidden>
+        <form class="win-card bevel-out" id="winForm" novalidate>
+          <div class="titlebar"><span>Grattis!</span></div>
+          <div class="win-body">
+            <p class="win-time" id="winTime">Du klarade det!</p>
+            <label>Namn
+              <input type="text" name="name" maxlength="24" autocomplete="nickname" required>
+            </label>
+            <label>Mailadress
+              <input type="email" name="email" maxlength="254" autocomplete="email" required>
+            </label>
+            <label class="consent">
+              <input type="checkbox" name="consent" required>
+              <span><span id="consentText"></span> <a id="privacyLink" href="#" target="_blank" rel="noopener" hidden>Integritetspolicy</a></span>
+            </label>
+            <p class="form-msg" id="formMsg" role="alert"></p>
+            <div class="win-actions">
+              <button type="button" class="btn bevel-out" id="skipBtn">Hoppa över</button>
+              <button type="submit" class="btn bevel-out primary" id="saveBtn">Spara på topplistan</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <p class="hint">Klicka för att öppna · Högerklicka eller håll inne för att flagga · Klicka på en siffra för att öppna runt den</p>
+  </div>
+
+  <section class="window bevel-out leaderboard" aria-labelledby="lbHeading">
+    <div class="titlebar"><span id="lbHeading">Topplista</span></div>
+    <div class="lb-body">
+      <p class="lb-intro" id="lbIntro"></p>
+      <div class="levels" role="group" aria-label="Topplista per nivå" id="lbTabs">
+        <button type="button" class="btn bevel-out" data-level="beginner" aria-pressed="true">Nybörjare</button>
+        <button type="button" class="btn bevel-out" data-level="intermediate" aria-pressed="false">Medel</button>
+        <button type="button" class="btn bevel-out" data-level="expert" aria-pressed="false">Expert</button>
+      </div>
+      <ol class="lb-list bevel-in" id="lbList"></ol>
+    </div>
+  </section>
+</main>
+<script src="/static/game.js"></script>
+</body>
+</html>

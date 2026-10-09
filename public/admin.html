@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>CP-Röj Admin</title>
+<link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+<header class="top">
+  <h1>CP-Röj <span>Admin</span></h1>
+  <nav>
+    <a href="#utseende">Utseende</a>
+    <a href="#ikoner">Ikoner</a>
+    <a href="#topplista">Topplista</a>
+    <a href="#inbaddning">Inbäddning</a>
+  </nav>
+</header>
+
+<main>
+  <section id="utseende" class="card">
+    <div class="card-head">
+      <h2>Utseende</h2>
+      <div class="actions">
+        <button type="button" id="resetColors" class="ghost">Återställ standardfärger</button>
+        <button type="button" id="saveConfig" class="primary">Spara ändringar</button>
+      </div>
+    </div>
+    <p class="status" id="configStatus" role="status"></p>
+    <div class="appearance">
+      <div>
+        <h3>Färger (HEX)</h3>
+        <div class="color-groups" id="colorGroups"></div>
+        <h3>Texter</h3>
+        <div class="texts">
+          <label>Spelets namn<input type="text" id="t-title" maxlength="40"></label>
+          <label>Text ovanför topplistan<textarea id="t-leaderboardIntro" maxlength="300" rows="2"></textarea></label>
+          <label>Samtyckestext (vid mailadress)<textarea id="t-consentText" maxlength="400" rows="3"></textarea></label>
+          <label>Länk till integritetspolicy (valfri)<input type="url" id="t-privacyUrl" placeholder="https://dinbutik.se/policies/privacy-policy"></label>
+        </div>
+      </div>
+      <div class="preview-wrap">
+        <h3>Förhandsvisning</h3>
+        <iframe id="preview" src="/game" title="Förhandsvisning av CP-Röj"></iframe>
+        <p class="muted">Förhandsvisningen uppdateras direkt. Ändringarna syns för besökare först när du sparar.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="ikoner" class="card">
+    <div class="card-head">
+      <h2>Ikoner för minorna</h2>
+      <label class="upload primary">Ladda upp ikoner
+        <input type="file" id="iconInput" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" multiple>
+      </label>
+    </div>
+    <p class="muted">PNG, JPG, GIF, WEBP eller SVG, max 1 MB per fil. Kvadratiska bilder med transparent bakgrund blir snyggast.
+      Med flera ikoner slumpas en ikon per mina. Utan ikoner används den klassiska minan.</p>
+    <p class="status" id="iconStatus" role="status"></p>
+    <ul class="icons" id="iconList"></ul>
+  </section>
+
+  <section id="topplista" class="card">
+    <div class="card-head">
+      <h2>Topplista &amp; mailadresser</h2>
+      <div class="actions">
+        <select id="scoreFilter" aria-label="Filtrera på nivå">
+          <option value="">Alla nivåer</option>
+          <option value="beginner">Nybörjare</option>
+          <option value="intermediate">Medel</option>
+          <option value="expert">Expert</option>
+        </select>
+        <a class="button ghost" href="/api/admin/scores.csv" download>Exportera CSV</a>
+        <button type="button" id="clearScores" class="danger">Töm topplistan</button>
+      </div>
+    </div>
+    <p class="muted">Bocka i <b>Meddelad</b> när du har skickat rabattkod till spelaren. CSV-filen kan importeras i Shopify Kunder eller Klaviyo.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Namn</th><th>E-post</th><th>Nivå</th><th class="num">Tid</th><th>Datum</th><th>Meddelad</th><th></th></tr>
+        </thead>
+        <tbody id="scoreRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="inbaddning" class="card">
+    <h2>Bädda in på Shopify</h2>
+    <ol class="steps">
+      <li>Gå till <b>Webbshop → Teman → Anpassa</b> i Shopify och öppna sidan där spelet ska visas.</li>
+      <li>Klicka <b>Lägg till sektion → Anpassad Liquid</b> (eller lägg koden i en sidas HTML-läge).</li>
+      <li>Klistra in koden nedan och spara.</li>
+    </ol>
+    <pre id="embedCode"></pre>
+    <button type="button" id="copyEmbed">Kopiera kod</button>
+  </section>
+</main>
+
+<script src="/admin/admin.js"></script>
+</body>
+</html>
