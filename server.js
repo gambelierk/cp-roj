@@ -40,6 +40,7 @@ const DEFAULT_COLORS = {
   text: '#000000',
   mineHit: '#ff0000',
   flag: '#ff0000',
+  lossDrip: '#b00000',
   n1: '#0000ff',
   n2: '#008000',
   n3: '#ff0000',
@@ -85,6 +86,7 @@ function loadConfig() {
     texts: { ...DEFAULT_TEXTS, ...(stored.texts || {}) },
     icons: Array.isArray(stored.icons) ? stored.icons : [],
     faces: stored.faces && typeof stored.faces === 'object' ? stored.faces : {},
+    lossImage: typeof stored.lossImage === 'string' ? stored.lossImage : null,
   };
 }
 
@@ -190,6 +192,7 @@ function publicConfig(admin = false) {
     texts: config.texts,
     icons: config.icons.map((icon) => ({ id: icon.id, url: `/uploads/${icon.file}`, ...(admin ? { name: icon.name } : {}) })),
     faces: Object.fromEntries(FACE_STATES.map((state) => [state, config.faces[state] ? `/uploads/${config.faces[state]}` : null])),
+    lossImage: config.lossImage ? `/uploads/${config.lossImage}` : null,
   };
 }
 
@@ -468,6 +471,19 @@ async function handle(req, res) {
       } else {
         return send(res, 405, 'Metoden stöds inte');
       }
+      await saveConfig();
+      if (oldFile) await fsp.unlink(path.join(UPLOAD_DIR, oldFile)).catch(() => {});
+      return json(res, 200, publicConfig(true));
+    }
+
+    if (p === '/api/admin/loss-image' && (m === 'PUT' || m === 'DELETE')) {
+      const oldFile = config.lossImage;
+      let file = null;
+      if (m === 'PUT') {
+        const body = await readJsonBody(req, Math.ceil(MAX_ICON_BYTES * 1.4) + 4096);
+        file = await saveUpload(body.data);
+      }
+      config = { ...config, lossImage: file };
       await saveConfig();
       if (oldFile) await fsp.unlink(path.join(UPLOAD_DIR, oldFile)).catch(() => {});
       return json(res, 200, publicConfig(true));

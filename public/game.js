@@ -10,7 +10,7 @@
     pageBg: '--page-bg', frame: '--frame', bevelLight: '--bevel-light', bevelDark: '--bevel-dark',
     cellHidden: '--cell-hidden', cellOpen: '--cell-open', gridLine: '--grid-line',
     counterBg: '--counter-bg', counterText: '--counter-text', titleBg: '--title-bg', titleText: '--title-text',
-    text: '--text', mineHit: '--mine-hit', flag: '--flag',
+    text: '--text', mineHit: '--mine-hit', flag: '--flag', lossDrip: '--loss-drip',
     n1: '--n1', n2: '--n2', n3: '--n3', n4: '--n4', n5: '--n5', n6: '--n6', n7: '--n7', n8: '--n8',
   };
   const LONG_PRESS_MS = 380;
@@ -57,6 +57,7 @@
     // Förladda ikonerna så att de syns direkt när en mina visas.
     for (const icon of cfg.icons || []) new Image().src = icon.url;
     for (const url of Object.values(cfg.faces || {})) if (url) new Image().src = url;
+    loadLossImage(cfg.lossImage);
     setFace(faceState);
     if (state && state.over) renderAll();
   }
@@ -225,6 +226,161 @@
     state.hit = hitIndex;
     setFace('lose');
     renderAll();
+    playLossMelt(state);
+  }
+
+  // ---------- Förlustbild: rött rinner ned och avtäcker en pixelbild ----------
+
+  const MELT_DELAY_MS = 700; // visa först vilken mina som small
+  const MELT_FALL_S = 1.2; // tid för det röda att rinna hela vägen ned
+  const MELT_HOLD_S = 0.25; // hur länge en ruta är helt röd
+  const MELT_FADE_S = 0.7; // övergång från rött till bildens färg
+  let lossImg = null;
+
+  function loadLossImage(url) {
+    if (!url) { lossImg = null; return; }
+    if (lossImg && lossImg.url === url) return;
+    const img = new Image();
+    img.src = url;
+    lossImg = { url, img, pixels: {} };
+  }
+
+  // Skalar ned bilden till exakt en pixel per ruta (beskuren till brädets proportioner).
+  async function lossPixels(cols, rows) {
+    const key = `${cols}x${rows}`;
+    if (lossImg.pixels[key]) return lossImg.pixels[key];
+    const { img } = lossImg;
+    await img.decode();
+    const iw = img.naturalWidth || 300;
+    const ih = img.naturalHeight || 300;
+    const ratio = cols / rows;
+    let sw = iw;
+    let sh = ih;
+    if (iw / ih > ratio) sw = ih * ratio; else sh = iw / ratio;
+    const sx = (iw - sw) / 2;
+    const sy = (ih - sh) / 2;
+    const first = Math.min(1, 1024 / Math.max(sw, sh));
+    let w = Math.max(cols, Math.round(sw * first));
+    let h = Math.max(rows, Math.round(sh * first));
+    let canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    let ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
+    // Halvera i steg så att varje pixel blir ett medelvärde av sitt område.
+    while (w > cols || h > rows) {
+      const nw = Math.max(cols, Math.ceil(w / 2));
+      const nh = Math.max(rows, Math.ceil(h / 2));
+      const next = document.createElement('canvas');
+      next.width = nw;
+      next.height = nh;
+      const nctx = next.getContext('2d', { willReadFrequently: true });
+      nctx.imageSmoothingQuality = 'high';
+      nctx.drawImage(canvas, 0, 0, w, h, 0, 0, nw, nh);
+      canvas = next;
+      ctx = nctx;
+      w = nw;
+      h = nh;
+    }
+    const data = ctx.getImageData(0, 0, cols, rows).data;
+    const pixels = [];
+    for (let i = 0; i < cols * rows; i++) pixels.push([data[i * 4], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3]]);
+    lossImg.pixels[key] = pixels;
+    return pixels;
+  }
+
+  function hexToRgb(hex) {
+    const n = parseInt(String(hex || '#000000').slice(1), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  const mix = (a, b, k) => [0, 1, 2].map((j) => Math.round(a[j] + (b[j] - a[j]) * k));
+  const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
+
+  async function playLossMelt(forState) {
+    if (!lossImg) return;
+    const delay = new Promise((r) => setTimeout(r, MELT_DELAY_MS));
+    let pixels;
+    try {
+      pixels = await lossPixels(forState.cols, forState.rows);
+    } catch {
+      return;
+    }
+    await delay;
+    if (state !== forState) return;
+
+    const { cols, rows } = forState;
+    const canvas = document.createElement('canvas');
+    canvas.className = 'melt';
+    canvas.setAttribute('aria-hidden', 'true');
+    boardEl.appendChild(canvas);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(boardEl.clientWidth * dpr);
+    canvas.height = Math.round(boardEl.clientHeight * dpr);
+    const ctx = canvas.getContext('2d');
+    const cw = canvas.width / cols;
+    const ch = canvas.height / rows;
+
+    const drip = hexToRgb(config.colors.lossDrip || '#b00000');
+    const base = hexToRgb(config.colors.cellOpen || '#c0c0c0');
+    const finalColors = pixels.map(([r, g, b, a]) => mix(base, [r, g, b], a / 255));
+
+    // Som skärmsmältningen i Doom: varje kolumn startar lite före eller efter sin granne.
+    const starts = [];
+    const shades = [];
+    let d = Math.random() * 0.2;
+    for (let c = 0; c < cols; c++) {
+      d = Math.min(0.45, Math.max(0, d + (Math.random() - 0.5) * 0.16));
+      starts.push(d);
+      shades.push(mix(drip, [0, 0, 0], Math.random() * 0.22));
+    }
+
+    const cellRect = (c, r, height) => {
+      const x = Math.floor(c * cw);
+      const y = Math.floor(r * ch);
+      ctx.fillRect(x, y, Math.floor((c + 1) * cw) - x, Math.ceil(height));
+    };
+
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      for (let i = 0; i < cols * rows; i++) {
+        ctx.fillStyle = rgb(finalColors[i]);
+        cellRect(i % cols, Math.floor(i / cols), ch + 1);
+      }
+      return;
+    }
+
+    const headAt = (local) => rows * Math.pow(Math.min(1, local / MELT_FALL_S), 1.6);
+    const passedAt = (r) => MELT_FALL_S * Math.pow(r / rows, 1 / 1.6);
+    const t0 = performance.now();
+
+    const frame = (now) => {
+      if (state !== forState || !canvas.isConnected) return;
+      const t = (now - t0) / 1000;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      let done = true;
+      for (let c = 0; c < cols; c++) {
+        const local = t - starts[c];
+        if (local <= 0) { done = false; continue; }
+        const head = headAt(local);
+        for (let r = 0; r < Math.ceil(head); r++) {
+          const k = Math.min(1, Math.max(0, (local - passedAt(r) - MELT_HOLD_S) / MELT_FADE_S));
+          if (k < 1) done = false;
+          const eased = k * k * (3 - 2 * k);
+          ctx.fillStyle = rgb(mix(shades[c], finalColors[r * cols + c], eased));
+          cellRect(c, r, r + 1 <= head ? ch + 1 : (head - r) * ch);
+        }
+        if (head < rows) {
+          done = false;
+          // Rundad droppe längst ned i den rinnande kolumnen.
+          ctx.fillStyle = rgb(shades[c]);
+          ctx.beginPath();
+          ctx.ellipse((c + 0.5) * cw, head * ch, cw / 2, Math.min(ch * 0.45, cw * 0.6), 0, 0, Math.PI);
+          ctx.fill();
+        }
+      }
+      if (!done) requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
   }
 
   // ---------- Rendering ----------
@@ -535,8 +691,15 @@
 
     // Förhandsvisning i adminpanelen: färger uppdateras live.
     window.addEventListener('message', (e) => {
-      if (e.origin !== location.origin || !e.data || e.data.type !== 'cp-roj:preview') return;
-      applyConfig(e.data.config);
+      if (e.origin !== location.origin || !e.data) return;
+      if (e.data.type === 'cp-roj:preview') applyConfig(e.data.config);
+      if (e.data.type === 'cp-roj:preview-lose') {
+        // "Testa förlust" i admin: öppna mitten och spräng sedan en mina.
+        newGame(level);
+        reveal(Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2));
+        const mine = state.cells.findIndex((c) => c.mine);
+        if (!state.over && mine >= 0) lose(mine);
+      }
     });
   }
 

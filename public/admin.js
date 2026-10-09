@@ -8,6 +8,7 @@
     }],
     ['Spelplan', {
       cellHidden: 'Stängd ruta', cellOpen: 'Öppnad ruta', gridLine: 'Rutnät', mineHit: 'Träffad mina', flag: 'Flagga',
+      lossDrip: 'Förlust – rinnande färg',
       counterBg: 'Räknare – bakgrund', counterText: 'Räknare – siffror',
     }],
     ['Siffror', {
@@ -142,7 +143,7 @@
     }
     try {
       const saved = await request('/api/admin/config', { method: 'PUT', body: { colors: current.colors, texts: current.texts } });
-      current = { ...current, colors: saved.colors, texts: saved.texts, icons: saved.icons, faces: saved.faces };
+      current = { ...current, colors: saved.colors, texts: saved.texts, icons: saved.icons, faces: saved.faces, lossImage: saved.lossImage };
       fillForm();
       pushPreview();
       setStatus(status, 'Sparat! Ändringarna syns nu i spelet.', 'ok');
@@ -309,6 +310,116 @@
     }
   }
 
+  // ---------- Förlustbild ----------
+
+  const BOARD_SIZES = [['Nybörjare', 9, 9], ['Medel', 16, 16], ['Expert', 30, 16]];
+
+  // Samma nedskalning som i spelet: beskär till brädets form och halvera i steg.
+  function pixelate(img, cols, rows) {
+    const iw = img.naturalWidth || 300;
+    const ih = img.naturalHeight || 300;
+    const ratio = cols / rows;
+    let sw = iw;
+    let sh = ih;
+    if (iw / ih > ratio) sw = ih * ratio; else sh = iw / ratio;
+    const first = Math.min(1, 1024 / Math.max(sw, sh));
+    let w = Math.max(cols, Math.round(sw * first));
+    let h = Math.max(rows, Math.round(sh * first));
+    let canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    let ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, w, h);
+    while (w > cols || h > rows) {
+      const nw = Math.max(cols, Math.ceil(w / 2));
+      const nh = Math.max(rows, Math.ceil(h / 2));
+      const next = document.createElement('canvas');
+      next.width = nw;
+      next.height = nh;
+      ctx = next.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(canvas, 0, 0, w, h, 0, 0, nw, nh);
+      canvas = next;
+      w = nw;
+      h = nh;
+    }
+    return canvas;
+  }
+
+  async function renderLoss() {
+    const root = $('lossPreviews');
+    root.textContent = '';
+    const url = current.lossImage;
+    $('removeLoss').hidden = !url;
+    $('lossUploadLabel').textContent = url ? 'Byt bild' : 'Ladda upp bild';
+    if (!url) {
+      const p = document.createElement('p');
+      p.className = 'muted';
+      p.textContent = 'Ingen förlustbild uppladdad.';
+      root.appendChild(p);
+      return;
+    }
+    const img = new Image();
+    img.src = url;
+    try { await img.decode(); } catch { return; }
+    const orig = document.createElement('figure');
+    const src = img.cloneNode();
+    src.className = 'source';
+    src.alt = '';
+    const oc = document.createElement('figcaption');
+    oc.textContent = 'Original';
+    orig.append(src, oc);
+    root.appendChild(orig);
+    for (const [label, cols, rows] of BOARD_SIZES) {
+      const fig = document.createElement('figure');
+      const small = pixelate(img, cols, rows);
+      const scale = Math.floor(144 / rows);
+      small.style.width = `${cols * scale}px`;
+      small.style.height = `${rows * scale}px`;
+      const cap = document.createElement('figcaption');
+      cap.textContent = `${label} (${cols}×${rows})`;
+      fig.append(small, cap);
+      root.appendChild(fig);
+    }
+  }
+
+  $('lossInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const status = $('lossStatus');
+    if (file.size > 1024 * 1024) return setStatus(status, `${file.name}: större än 1 MB`, 'err');
+    setStatus(status, 'Laddar upp…');
+    try {
+      const cfg = await request('/api/admin/loss-image', { method: 'PUT', body: { data: await readAsDataUrl(file) } });
+      current.lossImage = cfg.lossImage;
+      renderLoss();
+      pushPreview();
+      setStatus(status, 'Förlustbilden är sparad.', 'ok');
+    } catch (err) {
+      setStatus(status, err.message, 'err');
+    }
+  });
+
+  $('removeLoss').addEventListener('click', async () => {
+    if (!confirm('Ta bort förlustbilden?')) return;
+    try {
+      const cfg = await request('/api/admin/loss-image', { method: 'DELETE' });
+      current.lossImage = cfg.lossImage;
+      renderLoss();
+      pushPreview();
+      setStatus($('lossStatus'), 'Förlustbilden är borttagen.', 'ok');
+    } catch (err) {
+      setStatus($('lossStatus'), err.message, 'err');
+    }
+  });
+
+  $('testLoss').addEventListener('click', () => {
+    preview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    preview.contentWindow.postMessage({ type: 'cp-roj:preview-lose' }, location.origin);
+  });
+
   // ---------- Topplista ----------
 
   function formatTime(ms) {
@@ -430,11 +541,12 @@
     try {
       const cfg = await request('/api/admin/config');
       defaults = cfg.defaults;
-      current = { colors: { ...cfg.colors }, texts: { ...cfg.texts }, icons: cfg.icons, faces: cfg.faces };
+      current = { colors: { ...cfg.colors }, texts: { ...cfg.texts }, icons: cfg.icons, faces: cfg.faces, lossImage: cfg.lossImage };
       buildColorInputs();
       fillForm();
       renderIcons();
       renderFaces();
+      renderLoss();
       pushPreview();
       await loadScores();
     } catch (err) {

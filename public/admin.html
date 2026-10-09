@@ -14,6 +14,7 @@
     <a href="#utseende">Utseende</a>
     <a href="#ikoner">Ikoner</a>
     <a href="#smiley">Smiley</a>
+    <a href="#forlust">Förlustbild</a>
     <a href="#topplista">Topplista</a>
     <a href="#inbaddning">Inbäddning</a>
   </nav>
@@ -68,6 +69,24 @@
       Bara <b>Standard</b> behövs – lägen utan egen bild använder standardbilden. Utan bilder visas de vanliga smileysarna.</p>
     <p class="status" id="faceStatus" role="status"></p>
     <ul class="icons faces" id="faceList"></ul>
+  </section>
+
+  <section id="forlust" class="card">
+    <div class="card-head">
+      <h2>Förlustbild</h2>
+      <div class="actions">
+        <button type="button" id="testLoss">Testa förlust i förhandsvisningen</button>
+        <button type="button" id="removeLoss" class="danger" hidden>Ta bort bilden</button>
+        <label class="upload primary"><span id="lossUploadLabel">Ladda upp bild</span>
+          <input type="file" id="lossInput" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml">
+        </label>
+      </div>
+    </div>
+    <p class="muted">När spelaren förlorar rinner rött ned över spelplanen och avtäcker den här bilden – skalad till en pixel per ruta.
+      Bilden beskärs från mitten till brädets form. Enkla motiv med stora färgytor och hög kontrast syns bäst i så låg upplösning.
+      Den rinnande färgen ställer du in under <a href="#utseende">Utseende</a>. Utan bild visas bara minorna som vanligt.</p>
+    <p class="status" id="lossStatus" role="status"></p>
+    <div class="loss-previews" id="lossPreviews"></div>
   </section>
 
   <section id="topplista" class="card">
