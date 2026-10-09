@@ -369,14 +369,7 @@
           ctx.fillStyle = rgb(mix(shades[c], finalColors[r * cols + c], eased));
           cellRect(c, r, r + 1 <= head ? ch + 1 : (head - r) * ch);
         }
-        if (head < rows) {
-          done = false;
-          // Rundad droppe längst ned i den rinnande kolumnen.
-          ctx.fillStyle = rgb(shades[c]);
-          ctx.beginPath();
-          ctx.ellipse((c + 0.5) * cw, head * ch, cw / 2, Math.min(ch * 0.45, cw * 0.6), 0, 0, Math.PI);
-          ctx.fill();
-        }
+        if (head < rows) done = false;
       }
       if (!done) requestAnimationFrame(frame);
     };
