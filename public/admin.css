@@ -70,6 +70,11 @@ button:hover, .button:hover, .upload:hover { border-color: #bbb; }
 .icons img { width: 56px; height: 56px; object-fit: contain; background: #c0c0c0; border-radius: 6px; padding: 4px; }
 .icons .name { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .icons button { font-size: 12px; padding: 3px 10px; }
+.faces .face-preview { width: 64px; height: 64px; display: grid; place-items: center; font-size: 36px; background: #c0c0c0; border-radius: 6px; }
+.faces .face-preview img { width: 56px; height: 56px; padding: 0; background: none; }
+.faces .face-actions { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; align-items: stretch; }
+.faces .face-actions > * { line-height: 1.5; }
+.faces .upload { font-size: 12px; padding: 3px 10px; position: relative; }
 .icons .empty { grid-column: 1 / -1; border-style: dashed; color: var(--muted); padding: 24px; }
 
 .table-wrap { overflow-x: auto; margin-top: 10px; }

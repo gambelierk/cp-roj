@@ -142,7 +142,7 @@
     }
     try {
       const saved = await request('/api/admin/config', { method: 'PUT', body: { colors: current.colors, texts: current.texts } });
-      current = { ...current, colors: saved.colors, texts: saved.texts, icons: saved.icons };
+      current = { ...current, colors: saved.colors, texts: saved.texts, icons: saved.icons, faces: saved.faces };
       fillForm();
       pushPreview();
       setStatus(status, 'Sparat! Ändringarna syns nu i spelet.', 'ok');
@@ -221,6 +221,93 @@
     if (errors.length) setStatus(status, `${done} uppladdade.\n${errors.join('\n')}`, 'err');
     else setStatus(status, `${done} ${done === 1 ? 'ikon uppladdad' : 'ikoner uppladdade'}.`, 'ok');
   });
+
+  // ---------- Smileyknapp ----------
+
+  const FACE_STATES = [
+    ['normal', 'Standard', '🙂'],
+    ['press', 'När man klickar', '😮'],
+    ['win', 'Vinst', '😎'],
+    ['lose', 'Förlust', '😵'],
+  ];
+
+  function renderFaces() {
+    const list = $('faceList');
+    list.textContent = '';
+    const faces = current.faces || {};
+    for (const [state, label, emoji] of FACE_STATES) {
+      const li = document.createElement('li');
+      const box = document.createElement('div');
+      box.className = 'face-preview';
+      const url = faces[state];
+      if (url) {
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = '';
+        box.appendChild(img);
+      } else {
+        box.textContent = emoji;
+        if (state !== 'normal' && faces.normal) {
+          const img = document.createElement('img');
+          img.src = faces.normal;
+          img.alt = '';
+          img.style.opacity = '.45';
+          box.textContent = '';
+          box.appendChild(img);
+        }
+      }
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = url ? label : `${label} (${state !== 'normal' && faces.normal ? 'använder standard' : 'emoji'})`;
+
+      const actions = document.createElement('div');
+      actions.className = 'face-actions';
+      const upload = document.createElement('label');
+      upload.className = 'upload';
+      upload.textContent = url ? 'Byt' : 'Ladda upp';
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/png,image/jpeg,image/gif,image/webp,image/svg+xml';
+      input.addEventListener('change', async () => {
+        const file = input.files[0];
+        input.value = '';
+        if (!file) return;
+        const status = $('faceStatus');
+        if (file.size > 1024 * 1024) return setStatus(status, `${file.name}: större än 1 MB`, 'err');
+        setStatus(status, 'Laddar upp…');
+        try {
+          const cfg = await request(`/api/admin/faces/${state}`, { method: 'PUT', body: { data: await readAsDataUrl(file) } });
+          current.faces = cfg.faces;
+          renderFaces();
+          pushPreview();
+          setStatus(status, `Bilden för "${label}" är sparad.`, 'ok');
+        } catch (err) {
+          setStatus(status, err.message, 'err');
+        }
+      });
+      upload.appendChild(input);
+      actions.appendChild(upload);
+      if (url) {
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.textContent = 'Ta bort';
+        del.addEventListener('click', async () => {
+          try {
+            const cfg = await request(`/api/admin/faces/${state}`, { method: 'DELETE' });
+            current.faces = cfg.faces;
+            renderFaces();
+            pushPreview();
+            setStatus($('faceStatus'), `Bilden för "${label}" är borttagen.`, 'ok');
+          } catch (err) {
+            setStatus($('faceStatus'), err.message, 'err');
+          }
+        });
+        actions.appendChild(del);
+      }
+      li.append(box, name, actions);
+      list.appendChild(li);
+    }
+  }
 
   // ---------- Topplista ----------
 
@@ -343,10 +430,11 @@
     try {
       const cfg = await request('/api/admin/config');
       defaults = cfg.defaults;
-      current = { colors: { ...cfg.colors }, texts: { ...cfg.texts }, icons: cfg.icons };
+      current = { colors: { ...cfg.colors }, texts: { ...cfg.texts }, icons: cfg.icons, faces: cfg.faces };
       buildColorInputs();
       fillForm();
       renderIcons();
+      renderFaces();
       pushPreview();
       await loadScores();
     } catch (err) {

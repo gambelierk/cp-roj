@@ -56,6 +56,8 @@
     if (texts.privacyUrl) link.href = texts.privacyUrl;
     // Förladda ikonerna så att de syns direkt när en mina visas.
     for (const icon of cfg.icons || []) new Image().src = icon.url;
+    for (const url of Object.values(cfg.faces || {})) if (url) new Image().src = url;
+    setFace(faceState);
     if (state && state.over) renderAll();
   }
 
@@ -94,7 +96,7 @@
       frag.appendChild(el);
     }
     boardEl.appendChild(frag);
-    setFace('🙂');
+    setFace('normal');
     updateMineCounter();
     timerEl.textContent = '000';
     fitBoard();
@@ -213,7 +215,7 @@
     });
     state.flags = state.mines;
     updateMineCounter();
-    setFace('😎');
+    setFace('win');
     showWin(state);
   }
 
@@ -221,7 +223,7 @@
     state.over = true;
     stopTimer();
     state.hit = hitIndex;
-    setFace('😵');
+    setFace('lose');
     renderAll();
   }
 
@@ -291,8 +293,23 @@
     mineCounterEl.textContent = pad(state.mines - state.flags);
   }
 
+  const FACE_EMOJI = { normal: '🙂', press: '😮', win: '😎', lose: '😵' };
+  let faceState = 'normal';
+
   function setFace(face) {
-    faceEl.textContent = face;
+    faceState = face;
+    const faces = config.faces || {};
+    const url = faces[face] || faces.normal;
+    faceEl.textContent = '';
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      img.draggable = false;
+      faceEl.appendChild(img);
+    } else {
+      faceEl.textContent = FACE_EMOJI[face];
+    }
   }
 
   // ---------- Inmatning (mus + touch) ----------
@@ -321,14 +338,14 @@
     press = { i, x: e.clientX, y: e.clientY, button: e.button, long: false, timer: null, id: e.pointerId };
     if (e.button === 0 && !flagMode) {
       setPressed(i, true);
-      setFace('😮');
+      setFace('press');
     }
     if (e.pointerType !== 'mouse') {
       press.timer = setTimeout(() => {
         if (!press) return;
         press.long = true;
         setPressed(press.i, false);
-        setFace('🙂');
+        setFace('normal');
         const cell = state.cells[press.i];
         if (cell.open) chord(press.i);
         else toggleFlag(press.i);
@@ -345,7 +362,7 @@
     if (!press) return;
     clearTimeout(press.timer);
     setPressed(press.i, false);
-    if (!state.over) setFace('🙂');
+    if (!state.over) setFace('normal');
     press = null;
   }
 
@@ -359,7 +376,7 @@
     clearTimeout(p.timer);
     setPressed(p.i, false);
     press = null;
-    if (!state.over) setFace('🙂');
+    if (!state.over) setFace('normal');
     if (p.long) return;
     const i = e.pointerType === 'mouse' ? cellIndexFromEvent(e) : p.i;
     if (i !== p.i) return;

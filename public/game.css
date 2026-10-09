@@ -128,15 +128,22 @@ body.ready { visibility: visible; }
 }
 
 .face {
-  width: 38px;
-  height: 38px;
+  width: 57px;
+  height: 57px;
   padding: 0;
-  font-size: 22px;
+  font-size: 33px;
   line-height: 1;
   background: var(--frame);
   cursor: pointer;
   display: grid;
   place-items: center;
+}
+.face img {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+  pointer-events: none;
+  display: block;
 }
 .face:active { border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark); }
 

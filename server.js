@@ -57,7 +57,8 @@ const DEFAULT_TEXTS = {
   privacyUrl: '',
 };
 
-const DEFAULT_CONFIG = { colors: DEFAULT_COLORS, texts: DEFAULT_TEXTS, icons: [] };
+// Smileyknappens lägen. Saknas en bild används "normal", och saknas den också visas en emoji.
+const FACE_STATES = ['normal', 'press', 'win', 'lose'];
 
 const MAX_ICONS = 40;
 const MAX_ICON_BYTES = 1024 * 1024;
@@ -83,6 +84,7 @@ function loadConfig() {
     colors: { ...DEFAULT_COLORS, ...(stored.colors || {}) },
     texts: { ...DEFAULT_TEXTS, ...(stored.texts || {}) },
     icons: Array.isArray(stored.icons) ? stored.icons : [],
+    faces: stored.faces && typeof stored.faces === 'object' ? stored.faces : {},
   };
 }
 
@@ -187,6 +189,7 @@ function publicConfig(admin = false) {
     colors: config.colors,
     texts: config.texts,
     icons: config.icons.map((icon) => ({ id: icon.id, url: `/uploads/${icon.file}`, ...(admin ? { name: icon.name } : {}) })),
+    faces: Object.fromEntries(FACE_STATES.map((state) => [state, config.faces[state] ? `/uploads/${config.faces[state]}` : null])),
   };
 }
 
@@ -248,6 +251,20 @@ function sniffImage(buf) {
   const head = buf.subarray(0, 1024).toString('utf8').replace(/^﻿/, '').trimStart();
   if (/^(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*(<!DOCTYPE svg[^>]*>\s*)?<svg[\s>]/i.test(head)) return 'svg';
   return null;
+}
+
+// Sparar en uppladdad bild (data-URL) och returnerar filnamnet.
+async function saveUpload(dataUrl) {
+  const fail = (msg) => Object.assign(new Error(msg), { status: 400 });
+  const match = /^data:[^;,]*;base64,(.+)$/.exec(String(dataUrl || ''));
+  if (!match) throw fail('Ogiltig bildfil.');
+  const buf = Buffer.from(match[1], 'base64');
+  if (buf.length > MAX_ICON_BYTES) throw fail('Bilden är större än 1 MB.');
+  const ext = sniffImage(buf);
+  if (!ext) throw fail('Filformatet stöds inte. Använd PNG, JPG, GIF, WEBP eller SVG.');
+  const file = `${crypto.randomBytes(12).toString('hex')}.${ext}`;
+  await fsp.writeFile(path.join(UPLOAD_DIR, file), buf);
+  return file;
 }
 
 // ---------- Admin-autentisering ----------
@@ -420,14 +437,7 @@ async function handle(req, res) {
     if (p === '/api/admin/icons' && m === 'POST') {
       if (config.icons.length >= MAX_ICONS) return json(res, 400, { error: `Max ${MAX_ICONS} ikoner.` });
       const body = await readJsonBody(req, Math.ceil(MAX_ICON_BYTES * 1.4) + 4096);
-      const match = /^data:[^;,]*;base64,(.+)$/.exec(String(body.data || ''));
-      if (!match) return json(res, 400, { error: 'Ogiltig bildfil.' });
-      const buf = Buffer.from(match[1], 'base64');
-      if (buf.length > MAX_ICON_BYTES) return json(res, 400, { error: 'Bilden är större än 1 MB.' });
-      const ext = sniffImage(buf);
-      if (!ext) return json(res, 400, { error: 'Filformatet stöds inte. Använd PNG, JPG, GIF, WEBP eller SVG.' });
-      const file = `${crypto.randomBytes(12).toString('hex')}.${ext}`;
-      await fsp.writeFile(path.join(UPLOAD_DIR, file), buf);
+      const file = await saveUpload(body.data);
       const icon = { id: crypto.randomBytes(6).toString('hex'), file, name: cleanText(body.name, 100) };
       config = { ...config, icons: [...config.icons, icon] };
       await saveConfig();
@@ -441,6 +451,25 @@ async function handle(req, res) {
       config = { ...config, icons: config.icons.filter((i) => i !== icon) };
       await saveConfig();
       await fsp.unlink(path.join(UPLOAD_DIR, icon.file)).catch(() => {});
+      return json(res, 200, publicConfig(true));
+    }
+
+    const faceMatch = /^\/api\/admin\/faces\/([a-z]+)$/.exec(p);
+    if (faceMatch && FACE_STATES.includes(faceMatch[1])) {
+      const state = faceMatch[1];
+      const oldFile = config.faces[state];
+      if (m === 'PUT') {
+        const body = await readJsonBody(req, Math.ceil(MAX_ICON_BYTES * 1.4) + 4096);
+        const file = await saveUpload(body.data);
+        config = { ...config, faces: { ...config.faces, [state]: file } };
+      } else if (m === 'DELETE') {
+        const { [state]: _removed, ...rest } = config.faces;
+        config = { ...config, faces: rest };
+      } else {
+        return send(res, 405, 'Metoden stöds inte');
+      }
+      await saveConfig();
+      if (oldFile) await fsp.unlink(path.join(UPLOAD_DIR, oldFile)).catch(() => {});
       return json(res, 200, publicConfig(true));
     }
 
