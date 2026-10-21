@@ -36,7 +36,7 @@ ADMIN_PASSWORD=valfrittlösenord npm start
 
 Shopify kan inte köra egen serverkod, så spelet behöver ligga på en egen liten server. Exempel med **Render**:
 
-1. Skapa en ny *Web Service* från det här repot, med *Root Directory* `cp-roj`.
+1. Skapa en ny *Web Service* från det här repot (inget *Root Directory* behövs).
 2. Build command: *(tom)* · Start command: `node server.js`.
 3. Lägg till en **Disk** (persistent lagring), t.ex. monterad på `/var/data`, och sätt `DATA_DIR=/var/data`.
    Utan persistent disk försvinner topplistan och ikonerna vid varje omstart.
