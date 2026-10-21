@@ -34,15 +34,28 @@ ADMIN_PASSWORD=valfrittlösenord npm start
 
 ## Driftsättning
 
-Shopify kan inte köra egen serverkod, så spelet behöver ligga på en egen liten server. Exempel med **Render**:
+Shopify kan inte köra egen serverkod, så spelet behöver ligga på en egen liten server. Repot innehåller en färdig konfiguration för **Render** (`render.yaml`).
 
-1. Skapa en ny *Web Service* från det här repot (inget *Root Directory* behövs).
-2. Build command: *(tom)* · Start command: `node server.js`.
-3. Lägg till en **Disk** (persistent lagring), t.ex. monterad på `/var/data`, och sätt `DATA_DIR=/var/data`.
-   Utan persistent disk försvinner topplistan och ikonerna vid varje omstart.
-4. Sätt `ADMIN_PASSWORD` och gärna `FRAME_ANCESTORS` till din butiks adresser.
+### Render
 
-Railway, Fly.io eller en vanlig VPS fungerar lika bra – det viktiga är att `DATA_DIR` ligger på lagring som överlever omstarter.
+1. Logga in på [render.com](https://render.com) och koppla ditt GitHub-konto (ge Render åtkomst till repot `cp-roj`).
+2. Välj **New → Blueprint** och välj repot `cp-roj`.
+3. Render läser `render.yaml` och föreslår en webbtjänst med en disk på 1 GB. Fyll i **ADMIN_PASSWORD** (lösenordet till adminpanelen) och klicka **Apply**.
+4. När den är klar får du en adress, t.ex. `https://cp-roj.onrender.com`:
+   - Spelet: `https://cp-roj.onrender.com/game`
+   - Admin: `https://cp-roj.onrender.com/admin` (användarnamn `admin`)
+
+Inställningar, topplista och uppladdade bilder sparas på disken (`/var/data`) och finns kvar vid omstarter och nya versioner. Varje push till `main` driftsätts automatiskt.
+
+**Kostnad:** disk kräver en betald plan (*Starter*, ca 7 USD/mån, plus ca 0,25 USD/mån för disken). Planen kan ändras i `render.yaml` eller i Render.
+
+**Tips:** när du vet butikens adresser, ändra `FRAME_ANCESTORS` under *Environment* i Render till t.ex. `https://dinbutik.se https://dinbutik.myshopify.com`, så kan spelet bara bäddas in i din butik.
+
+Vill du ha en egen adress, t.ex. `spel.dinbutik.se`, lägg till den under *Settings → Custom Domains* i Render.
+
+### Andra värdar
+
+Railway, Fly.io eller en vanlig VPS fungerar lika bra: starta med `node server.js` och se till att `DATA_DIR` pekar på lagring som överlever omstarter.
 
 ## Bädda in på Shopify
 

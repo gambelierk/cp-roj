@@ -1,0 +1,26 @@
+# Render Blueprint för CP-Röj.
+# I Render: New → Blueprint → välj det här repot. Render frågar efter ADMIN_PASSWORD.
+services:
+  - type: web
+    name: cp-roj
+    runtime: node
+    # Persistent disk kräver en betald plan; gratisplanen tappar topplistan vid omstart.
+    plan: starter
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATA_DIR
+        value: /var/data
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: FRAME_ANCESTORS
+        value: "*"
+    disk:
+      name: cp-roj-data
+      mountPath: /var/data
+      sizeGB: 1
