@@ -67,6 +67,23 @@ const FACE_STATES = ['normal', 'press', 'win', 'lose'];
 
 const MAX_ICONS = 40;
 const MAX_ICON_BYTES = 1024 * 1024;
+const MAX_FONT_BYTES = 3 * 1024 * 1024;
+
+// Typsnitt som kan bytas i admin. fallback är nyckeln till en färdig lista i FONT_FALLBACKS.
+const FONT_SLOTS = {
+  text: 'classic',
+  cells: 'verdana',
+  counter: 'mono',
+};
+const FONT_FALLBACKS = {
+  classic: { label: 'Klassisk Windows (Tahoma, Verdana)', css: 'Tahoma, Verdana, "Segoe UI", system-ui, sans-serif' },
+  verdana: { label: 'Verdana', css: 'Verdana, Tahoma, "Segoe UI", sans-serif' },
+  system: { label: 'Systemets typsnitt (sans-serif)', css: 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' },
+  arial: { label: 'Arial / Helvetica', css: 'Arial, "Helvetica Neue", Helvetica, sans-serif' },
+  rounded: { label: 'Rundad', css: 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", system-ui, sans-serif' },
+  serif: { label: 'Serif (Georgia, Times)', css: 'Georgia, "Times New Roman", Times, serif' },
+  mono: { label: 'Monospace (Courier)', css: '"Courier New", ui-monospace, Menlo, Consolas, monospace' },
+};
 const GAME_TTL_MS = 3 * 60 * 60 * 1000;
 
 // ---------- Lagring ----------
@@ -93,6 +110,14 @@ function loadConfig() {
     faces: stored.faces && typeof stored.faces === 'object' ? stored.faces : {},
     lossImage: typeof stored.lossImage === 'string' ? stored.lossImage : null,
     flagImage: typeof stored.flagImage === 'string' ? stored.flagImage : null,
+    fonts: Object.fromEntries(Object.entries(FONT_SLOTS).map(([slot, fallback]) => {
+      const f = (stored.fonts && stored.fonts[slot]) || {};
+      return [slot, {
+        file: typeof f.file === 'string' ? f.file : null,
+        name: typeof f.name === 'string' ? f.name : '',
+        fallback: FONT_FALLBACKS[f.fallback] ? f.fallback : fallback,
+      }];
+    })),
   };
 }
 
@@ -220,6 +245,11 @@ function publicConfig(admin = false) {
     faces: Object.fromEntries(FACE_STATES.map((state) => [state, config.faces[state] ? `/uploads/${config.faces[state]}` : null])),
     lossImage: config.lossImage ? `/uploads/${config.lossImage}` : null,
     flagImage: config.flagImage ? `/uploads/${config.flagImage}` : null,
+    fonts: Object.fromEntries(Object.entries(config.fonts).map(([slot, f]) => [slot, {
+      url: f.file ? `/uploads/${f.file}` : null,
+      fallback: FONT_FALLBACKS[f.fallback].css,
+      ...(admin ? { name: f.name, fallbackKey: f.fallback } : {}),
+    }])),
   };
 }
 
@@ -264,13 +294,27 @@ function serveFile(res, [file, type], extraHeaders = {}) {
   });
 }
 
-const IMAGE_TYPES = {
+const UPLOAD_TYPES = {
   png: 'image/png',
   jpg: 'image/jpeg',
   gif: 'image/gif',
   webp: 'image/webp',
   svg: 'image/svg+xml',
+  woff2: 'font/woff2',
+  woff: 'font/woff',
+  ttf: 'font/ttf',
+  otf: 'font/otf',
 };
+
+function sniffFont(buf) {
+  if (buf.length < 12) return null;
+  const tag = buf.subarray(0, 4).toString('latin1');
+  if (tag === 'wOF2') return 'woff2';
+  if (tag === 'wOFF') return 'woff';
+  if (tag === 'OTTO') return 'otf';
+  if (tag === 'true' || buf.readUInt32BE(0) === 0x00010000) return 'ttf';
+  return null;
+}
 
 function sniffImage(buf) {
   if (buf.length > 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
@@ -282,15 +326,22 @@ function sniffImage(buf) {
   return null;
 }
 
-// Sparar en uppladdad bild (data-URL) och returnerar filnamnet.
-async function saveUpload(dataUrl) {
+// Sparar en uppladdad bild eller typsnittsfil (data-URL) och returnerar filnamnet.
+async function saveUpload(dataUrl, kind = 'image') {
   const fail = (msg) => Object.assign(new Error(msg), { status: 400 });
   const match = /^data:[^;,]*;base64,(.+)$/.exec(String(dataUrl || ''));
-  if (!match) throw fail('Ogiltig bildfil.');
+  if (!match) throw fail('Ogiltig fil.');
   const buf = Buffer.from(match[1], 'base64');
-  if (buf.length > MAX_ICON_BYTES) throw fail('Bilden är större än 1 MB.');
-  const ext = sniffImage(buf);
-  if (!ext) throw fail('Filformatet stöds inte. Använd PNG, JPG, GIF, WEBP eller SVG.');
+  let ext;
+  if (kind === 'font') {
+    if (buf.length > MAX_FONT_BYTES) throw fail('Typsnittsfilen är större än 3 MB.');
+    ext = sniffFont(buf);
+    if (!ext) throw fail('Filformatet stöds inte. Använd WOFF2, WOFF, TTF eller OTF.');
+  } else {
+    if (buf.length > MAX_ICON_BYTES) throw fail('Bilden är större än 1 MB.');
+    ext = sniffImage(buf);
+    if (!ext) throw fail('Filformatet stöds inte. Använd PNG, JPG, GIF, WEBP eller SVG.');
+  }
   const file = `${crypto.randomBytes(12).toString('hex')}.${ext}`;
   await fsp.writeFile(path.join(UPLOAD_DIR, file), buf);
   return file;
@@ -351,13 +402,15 @@ async function handle(req, res) {
 
   if (m === 'GET' && p.startsWith('/uploads/')) {
     const name = p.slice('/uploads/'.length);
-    const match = /^[a-f0-9]{24}\.(png|jpg|gif|webp|svg)$/.exec(name);
+    const match = /^[a-f0-9]{24}\.(png|jpg|gif|webp|svg|woff2|woff|ttf|otf)$/.exec(name);
     if (!match) return send(res, 404, 'Hittades inte');
     return fs.readFile(path.join(UPLOAD_DIR, name), (err, data) => {
       if (err) return send(res, 404, 'Hittades inte');
       send(res, 200, data, {
-        'Content-Type': IMAGE_TYPES[match[1]],
+        'Content-Type': UPLOAD_TYPES[match[1]],
         'Cache-Control': 'public, max-age=31536000, immutable',
+        // Typsnitten används också av popup-knappen på butikssidan (en annan domän).
+        'Access-Control-Allow-Origin': '*',
         // Uppladdade SVG:er får aldrig köra skript på vår domän.
         'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
       });
@@ -448,7 +501,11 @@ async function handle(req, res) {
     if (m === 'GET' && ADMIN_FILES[p]) return serveFile(res, ADMIN_FILES[p], adminHeaders);
 
     if (p === '/api/admin/config' && m === 'GET') {
-      return json(res, 200, { ...publicConfig(true), defaults: { colors: DEFAULT_COLORS, texts: DEFAULT_TEXTS } });
+      return json(res, 200, {
+        ...publicConfig(true),
+        defaults: { colors: DEFAULT_COLORS, texts: DEFAULT_TEXTS },
+        fontFallbacks: Object.fromEntries(Object.entries(FONT_FALLBACKS).map(([k, v]) => [k, v.label])),
+      });
     }
 
     if (p === '/api/admin/config' && m === 'PUT') {
@@ -539,6 +596,36 @@ async function handle(req, res) {
         file = await saveUpload(body.data);
       }
       config = { ...config, [key]: file };
+      await saveConfig();
+      if (oldFile) await fsp.unlink(path.join(UPLOAD_DIR, oldFile)).catch(() => {});
+      return json(res, 200, publicConfig(true));
+    }
+
+    const fontMatch = /^\/api\/admin\/fonts\/([a-z]+)$/.exec(p);
+    if (fontMatch && FONT_SLOTS[fontMatch[1]]) {
+      const slot = fontMatch[1];
+      const font = { ...config.fonts[slot] };
+      let oldFile = null;
+      if (m === 'PUT') {
+        const body = await readJsonBody(req, Math.ceil(MAX_FONT_BYTES * 1.4) + 4096);
+        if (body.data) {
+          const file = await saveUpload(body.data, 'font');
+          oldFile = font.file;
+          font.file = file;
+          font.name = cleanText(body.name, 100);
+        }
+        if ('fallback' in body) {
+          if (!FONT_FALLBACKS[body.fallback]) return json(res, 400, { error: 'Okänt fall back-typsnitt.' });
+          font.fallback = body.fallback;
+        }
+      } else if (m === 'DELETE') {
+        oldFile = font.file;
+        font.file = null;
+        font.name = '';
+      } else {
+        return send(res, 405, 'Metoden stöds inte');
+      }
+      config = { ...config, fonts: { ...config.fonts, [slot]: font } };
       await saveConfig();
       if (oldFile) await fsp.unlink(path.join(UPLOAD_DIR, oldFile)).catch(() => {});
       return json(res, 200, publicConfig(true));

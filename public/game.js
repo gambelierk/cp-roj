@@ -46,6 +46,27 @@
   const MINE_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="currentColor"><circle cx="8" cy="8" r="4.6"/><path d="M7.4 1h1.2v14H7.4zM1 7.4h14v1.2H1z"/><path d="m3.1 3.9.8-.8 9 9-.8.8zM12.1 3.1l.8.8-9 9-.8-.8z"/></g><path d="M5.7 5.7h1.8v1.8H5.7z" fill="#fff"/></svg>';
   const FLAG_SVG = '<svg class="flag-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M7 2h1.5v9H7z" fill="currentColor"/><path d="M8.5 2 3 4.75 8.5 7.5z" class="flag-cloth"/><path d="M4 11.5h7.5V13H4zM3 13h9.5v1.5H3z" fill="currentColor"/></svg>';
 
+  // Egna typsnitt: ett @font-face per uppladdad fil, sedan fall back-typsnitten.
+  const FONT_VARS = { text: '--font-text', cells: '--font-cells', counter: '--font-counter' };
+  function applyFonts(fonts) {
+    if (!fonts) return;
+    let styleEl = document.getElementById('cp-roj-fonts');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'cp-roj-fonts';
+      document.head.appendChild(styleEl);
+    }
+    const faces = [];
+    for (const [slot, cssVar] of Object.entries(FONT_VARS)) {
+      const f = fonts[slot];
+      if (!f) continue;
+      const family = `CPRoj-${slot}`;
+      if (f.url) faces.push(`@font-face{font-family:"${family}";src:url("${f.url}");font-display:swap;}`);
+      document.documentElement.style.setProperty(cssVar, f.url ? `"${family}", ${f.fallback}` : f.fallback);
+    }
+    styleEl.textContent = faces.join('\n');
+  }
+
   function flagElement() {
     if (config.flagImage) {
       const img = document.createElement('img');
@@ -82,6 +103,7 @@
     // Förladda ikonerna så att de syns direkt när en mina visas.
     for (const icon of cfg.icons || []) new Image().src = icon.url;
     for (const url of Object.values(cfg.faces || {})) if (url) new Image().src = url;
+    applyFonts(cfg.fonts);
     loadLossImage(cfg.lossImage);
     if (cfg.flagImage) new Image().src = cfg.flagImage;
     // Flagga-lägesknappen använder samma flagga som spelplanen.

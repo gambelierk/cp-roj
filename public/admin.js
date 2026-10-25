@@ -142,7 +142,7 @@
     }
     try {
       const saved = await request('/api/admin/config', { method: 'PUT', body: { colors: current.colors, texts: current.texts } });
-      current = { ...current, colors: saved.colors, texts: saved.texts, icons: saved.icons, faces: saved.faces, lossImage: saved.lossImage, flagImage: saved.flagImage };
+      current = { ...current, colors: saved.colors, texts: saved.texts, icons: saved.icons, faces: saved.faces, lossImage: saved.lossImage, flagImage: saved.flagImage, fonts: saved.fonts };
       fillForm();
       pushPreview();
       setStatus(status, 'Sparat! Ändringarna syns nu i spelet.', 'ok');
@@ -306,6 +306,118 @@
       }
       li.append(box, name, actions);
       list.appendChild(li);
+    }
+  }
+
+  // ---------- Typsnitt ----------
+
+  const FONT_SLOTS = [
+    ['text', 'Text', 'Knappar, rubriker, topplista och rabattkod.', 'CP-Röj · Topplista · Spara på topplistan'],
+    ['cells', 'Siffror på rutorna', 'Siffrorna 1–8 som visar hur många minor som ligger runt en ruta.', '1 2 3 4 5 6 7 8'],
+    ['counter', 'Räknare', 'Minräknaren och tiden ovanför spelplanen.', '010 · 123'],
+  ];
+  let fontFallbacks = {};
+
+  function injectAdminFonts() {
+    let el = document.getElementById('admin-fonts');
+    if (!el) {
+      el = document.createElement('style');
+      el.id = 'admin-fonts';
+      document.head.appendChild(el);
+    }
+    el.textContent = FONT_SLOTS.map(([slot]) => {
+      const f = current.fonts[slot];
+      return f.url ? `@font-face{font-family:"Admin-${slot}";src:url("${f.url}");font-display:swap;}` : '';
+    }).join('\n');
+  }
+
+  async function saveFont(slot, body, okMsg) {
+    const status = $('fontStatus');
+    try {
+      const cfg = await request(`/api/admin/fonts/${slot}`, body ? { method: 'PUT', body } : { method: 'DELETE' });
+      current.fonts = cfg.fonts;
+      renderFonts();
+      pushPreview();
+      setStatus(status, okMsg, 'ok');
+    } catch (err) {
+      setStatus(status, err.message, 'err');
+    }
+  }
+
+  function renderFonts() {
+    injectAdminFonts();
+    const root = $('fontSlots');
+    root.textContent = '';
+    for (const [slot, label, help, sampleText] of FONT_SLOTS) {
+      const f = current.fonts[slot];
+      const box = document.createElement('div');
+      box.className = 'font-slot';
+
+      const info = document.createElement('div');
+      const h = document.createElement('h3');
+      h.textContent = label;
+      const p = document.createElement('p');
+      p.className = 'muted';
+      p.textContent = help;
+      const sample = document.createElement('div');
+      sample.className = 'font-sample';
+      sample.textContent = sampleText;
+      sample.style.fontFamily = f.url ? `"Admin-${slot}", ${f.fallback}` : f.fallback;
+      sample.style.fontWeight = slot === 'text' ? 'normal' : 'bold';
+      const file = document.createElement('div');
+      file.className = 'font-file';
+      file.textContent = f.url ? `Eget typsnitt: ${f.name || 'uppladdad fil'}` : 'Inget eget typsnitt – fall back används.';
+      info.append(h, p, sample, file);
+
+      const controls = document.createElement('div');
+      controls.className = 'font-controls';
+      const row = document.createElement('div');
+      row.className = 'row';
+      const upload = document.createElement('label');
+      upload.className = 'upload primary';
+      upload.textContent = f.url ? 'Byt typsnitt' : 'Ladda upp typsnitt';
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.id = `font-${slot}`;
+      input.accept = '.woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf';
+      input.addEventListener('change', async () => {
+        const fileObj = input.files[0];
+        input.value = '';
+        if (!fileObj) return;
+        if (fileObj.size > 3 * 1024 * 1024) return setStatus($('fontStatus'), `${fileObj.name}: större än 3 MB`, 'err');
+        setStatus($('fontStatus'), 'Laddar upp…');
+        await saveFont(slot, { data: await readAsDataUrl(fileObj), name: fileObj.name }, `Typsnittet för ${label.toLowerCase()} är sparat.`);
+      });
+      upload.appendChild(input);
+      row.appendChild(upload);
+      if (f.url) {
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.textContent = 'Ta bort';
+        del.addEventListener('click', () => {
+          if (!confirm(`Ta bort det egna typsnittet för ${label.toLowerCase()}?`)) return;
+          saveFont(slot, null, 'Typsnittet är borttaget – fall back används.');
+        });
+        row.appendChild(del);
+      }
+      const selLabel = document.createElement('label');
+      selLabel.className = 'muted';
+      selLabel.htmlFor = `fallback-${slot}`;
+      selLabel.textContent = 'Fall back-typsnitt';
+      const sel = document.createElement('select');
+      sel.id = `fallback-${slot}`;
+      for (const [key, name] of Object.entries(fontFallbacks)) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = name;
+        opt.selected = key === f.fallbackKey;
+        sel.appendChild(opt);
+      }
+      sel.addEventListener('change', () => saveFont(slot, { fallback: sel.value }, 'Fall back-typsnittet är sparat.'));
+      controls.append(row, selLabel, sel);
+
+      box.append(info, controls);
+      root.appendChild(box);
     }
   }
 
@@ -644,13 +756,15 @@
     try {
       const cfg = await request('/api/admin/config');
       defaults = cfg.defaults;
-      current = { colors: { ...cfg.colors }, texts: { ...cfg.texts }, icons: cfg.icons, faces: cfg.faces, lossImage: cfg.lossImage, flagImage: cfg.flagImage };
+      current = { colors: { ...cfg.colors }, texts: { ...cfg.texts }, icons: cfg.icons, faces: cfg.faces, lossImage: cfg.lossImage, flagImage: cfg.flagImage, fonts: cfg.fonts };
+      fontFallbacks = cfg.fontFallbacks;
       buildColorInputs();
       fillForm();
       renderIcons();
       renderFaces();
       renderLoss();
       renderFlag();
+      renderFonts();
       pushPreview();
       await Promise.all([loadScores(), loadStats()]);
     } catch (err) {

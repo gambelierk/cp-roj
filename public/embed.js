@@ -71,11 +71,12 @@
   var titleBg = '#000080';
   var titleText = '#ffffff';
   var frameColor = '#c0c0c0';
+  var fontStack = 'Tahoma,Verdana,"Segoe UI",system-ui,sans-serif';
 
   var style = document.createElement('style');
   style.textContent = [
     '.cprj-launcher{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:2147482000;',
-    'font:bold 15px/1.2 Tahoma,Verdana,"Segoe UI",system-ui,sans-serif;padding:12px 18px;cursor:pointer;',
+    'font:bold 15px/1.2 var(--cprj-font);padding:12px 18px;cursor:pointer;',
     'background:var(--cprj-title-bg);color:var(--cprj-title-text);border:3px solid;',
     'border-color:rgba(255,255,255,.65) rgba(0,0,0,.45) rgba(0,0,0,.45) rgba(255,255,255,.65);',
     'box-shadow:0 6px 18px rgba(0,0,0,.25);border-radius:0;text-transform:none;letter-spacing:normal;min-width:0;width:auto;height:auto;margin:0;}',
@@ -88,7 +89,7 @@
     '.cprj-dialog{position:relative;width:min(440px,100%);max-height:calc(100% - 8px);display:flex;flex-direction:column;',
     'background:var(--cprj-frame);border:3px solid;border-color:#fff #808080 #808080 #fff;box-shadow:0 12px 40px rgba(0,0,0,.4);}',
     '.cprj-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 4px 4px 10px;',
-    'background:var(--cprj-title-bg);color:var(--cprj-title-text);font:bold 14px Tahoma,Verdana,sans-serif;}',
+    'background:var(--cprj-title-bg);color:var(--cprj-title-text);font:bold 14px var(--cprj-font);}',
     '.cprj-close{width:30px;height:28px;padding:0;cursor:pointer;font:bold 18px/1 Tahoma,Verdana,sans-serif;color:#000;',
     'background:var(--cprj-frame);border:2px solid;border-color:#fff #808080 #808080 #fff;border-radius:0;min-width:0;margin:0;}',
     '.cprj-body{overflow-y:auto;-webkit-overflow-scrolling:touch;}',
@@ -129,6 +130,7 @@
     root.style.setProperty('--cprj-title-bg', titleBg);
     root.style.setProperty('--cprj-title-text', titleText);
     root.style.setProperty('--cprj-frame', frameColor);
+    root.style.setProperty('--cprj-font', fontStack);
   }
   applyColors(launcher);
   applyColors(backdrop);
@@ -176,6 +178,17 @@
     titleBg = c.titleBg || titleBg;
     titleText = c.titleText || titleText;
     frameColor = c.frame || frameColor;
+    // Spelets texttypsnitt, inklusive en uppladdad fil, för knappen och titelraden.
+    var tf = cfg.fonts && cfg.fonts.text;
+    if (tf) {
+      fontStack = tf.fallback;
+      if (tf.url) {
+        var face = document.createElement('style');
+        face.textContent = '@font-face{font-family:"CPRoj-popup";src:url("' + origin + tf.url + '");font-display:swap;}';
+        document.head.appendChild(face);
+        fontStack = '"CPRoj-popup",' + tf.fallback;
+      }
+    }
     applyColors(launcher);
     applyColors(backdrop);
     if (cfg.texts && cfg.texts.title && !script.getAttribute('data-title')) {

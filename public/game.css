@@ -16,7 +16,10 @@
   --n1: #0000ff; --n2: #008000; --n3: #ff0000; --n4: #000080;
   --n5: #800000; --n6: #008080; --n7: #000000; --n8: #808080;
   --cell: 28px;
-  --font: Tahoma, Verdana, "Segoe UI", system-ui, sans-serif;
+  /* Typsnitt: kan bytas i admin (egen fil + fall back). */
+  --font-text: Tahoma, Verdana, "Segoe UI", system-ui, sans-serif;
+  --font-cells: Verdana, Tahoma, "Segoe UI", sans-serif;
+  --font-counter: "Courier New", ui-monospace, Menlo, Consolas, monospace;
 }
 
 * { box-sizing: border-box; }
@@ -25,7 +28,7 @@ html, body {
   margin: 0;
   background: var(--page-bg);
   color: var(--text);
-  font-family: var(--font);
+  font-family: var(--font-text);
   font-size: 14px;
 }
 
@@ -112,7 +115,7 @@ body.ready { visibility: visible; }
 .counter {
   background: var(--counter-bg);
   color: var(--counter-text);
-  font-family: "DS-Digital", "Courier New", ui-monospace, monospace;
+  font-family: var(--font-counter);
   font-weight: bold;
   font-size: 26px;
   line-height: 1;
@@ -187,7 +190,7 @@ body.ready { visibility: visible; }
   line-height: 1;
   cursor: pointer;
   overflow: hidden;
-  font-family: Verdana, Tahoma, sans-serif;
+  font-family: var(--font-cells);
 }
 .cell.pressed, .cell.open {
   background: var(--cell-open);
@@ -268,7 +271,7 @@ body.ready { visibility: visible; }
 .discount-code {
   background: var(--page-bg);
   color: var(--text);
-  font-family: "Courier New", ui-monospace, monospace;
+  font-family: var(--font-text);
   font-weight: bold;
   font-size: 22px;
   text-align: center;

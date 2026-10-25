@@ -6,6 +6,7 @@ En kopia av klassiska Röj (Minesweeper) med:
 - **Egen smileyknapp**: byt smileyn mot egna bilder (PNG m.fl.) – en standardbild och valfritt egna bilder för klick, vinst och förlust.
 - **Egen flagga**: byt flaggan på flaggade rutor (och på flagga-knappen) mot en egen bild.
 - **Förlustbild**: när spelaren förlorar rinner rött ned över spelplanen (som i Doom) och avtäcker en egen bild, nedskalad till en pixel per ruta.
+- **Egna typsnitt**: ladda upp typsnitt (WOFF2, WOFF, TTF, OTF) för text, siffrorna på rutorna och räknarna, och välj fall back-typsnitt för vart och ett.
 - **Egna färger**: alla UI-färger sätts med HEX-koder i adminpanelen, med live-förhandsvisning.
 - **Topplista med rabattkod**: den som vinner skriver in sitt namn på topplistan och får direkt en rabattkod: *Överste CP-Röj* för den som tar plats 1, annars *Medelmåttig CP-röjare* (båda ändras i admin).
 - **Statistik**: admin visar hur många omgångar som har påbörjats (första klicket) och avslutats (vunna och förlorade), totalt och per dag.
