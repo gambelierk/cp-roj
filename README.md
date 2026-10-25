@@ -7,7 +7,7 @@ En kopia av klassiska Röj (Minesweeper) med:
 - **Egen flagga**: byt flaggan på flaggade rutor (och på flagga-knappen) mot en egen bild.
 - **Förlustbild**: när spelaren förlorar rinner rött ned över spelplanen (som i Doom) och avtäcker en egen bild, nedskalad till en pixel per ruta.
 - **Egna färger**: alla UI-färger sätts med HEX-koder i adminpanelen, med live-förhandsvisning.
-- **Topplista med rabattkod**: den som vinner skriver in sitt namn på topplistan och får direkt en rabattkod (standard: *Överste CP-Röj*, ändras i admin).
+- **Topplista med rabattkod**: den som vinner skriver in sitt namn på topplistan och får direkt en rabattkod: *Överste CP-Röj* för den som tar plats 1, annars *Medelmåttig CP-röjare* (båda ändras i admin).
 - **Statistik**: admin visar hur många omgångar som har påbörjats (första klicket) och avslutats (vunna och förlorade), totalt och per dag.
 - **Inbäddning på Shopify** med två rader kod.
 - Klassisk spelplan 9×9 med 10 minor, säkert första klick, högerklick/långtryck för flagga, klick på siffra öppnar runt den, eget flagga-läge för mobil.
@@ -75,8 +75,9 @@ Spelet laddas i en iframe som automatiskt anpassar sin höjd, så butikens tema 
 ## Topplista och rabattkoder
 
 - När spelaren vinner skriver hen in sitt namn. Efter att namnet har sparats visas rabattkoden med en knapp för att kopiera den.
-- Rabattkoden och texten ovanför den ändras under *Utseende → Texter* i admin. **Skapa en rabattkod med exakt samma namn i Shopify** under *Rabatter*, annars fungerar den inte i kassan.
-- Koden finns inte i spelets publika kod, den skickas bara från servern efter en sparad vinst.
+- Den som tar **plats 1** med sin tid får koden *Överste CP-Röj*. Alla andra vinnare får *Medelmåttig CP-röjare*. Placeringen gäller den sparade omgångens tid, så den som redan ligger etta men vinner igen med en sämre tid får den andra koden.
+- Koderna och texterna ovanför dem ändras under *Utseende → Texter* i admin. **Skapa rabattkoder med exakt samma namn i Shopify** under *Rabatter*, annars fungerar de inte i kassan.
+- Koderna finns inte i spelets publika kod, de skickas bara från servern efter en sparad vinst.
 - Placeringen avgörs av tid: snabbaste vinsten hamnar överst. Topplistan visar topp 10, med bästa tiden per namn (vid lika tid går den som spelade först före). I admin ser du alla resultat, kan ta bort olämpliga namn och exportera CSV.
 
 ## Statistik

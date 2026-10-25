@@ -52,11 +52,13 @@ const DEFAULT_COLORS = {
 const DEFAULT_TEXTS = {
   title: 'CP-Röj',
   leaderboardIntro: 'Klara spelet och skriv in ditt namn på topplistan – då får du en rabattkod!',
-  discountText: 'Grattis! Här är din rabattkod:',
+  discountText: 'Grattis, du tog förstaplatsen! Här är din rabattkod:',
   discountCode: 'Överste CP-Röj',
+  discountTextOther: 'Bra kämpat! Här är din rabattkod:',
+  discountCodeOther: 'Medelmåttig CP-röjare',
 };
 // Rabattkoden visas bara för den som har vunnit och sparat sitt namn, aldrig i den publika konfigurationen.
-const SECRET_TEXTS = ['discountCode'];
+const SECRET_TEXTS = ['discountCode', 'discountCodeOther'];
 
 // Smileyknappens lägen. Saknas en bild används "normal", och saknas den också visas en emoji.
 const FACE_STATES = ['normal', 'press', 'win', 'lose'];
@@ -418,15 +420,17 @@ async function handle(req, res) {
       timeMs: game.finishedAt - game.startedAt,
       createdAt: new Date().toISOString(),
     };
+    // Placeringen gäller den här omgångens tid: vid lika tid går den som spelade först före.
+    const rank = 1 + leaderboard(Infinity).filter((s) => s.timeMs <= entry.timeMs).length;
     scores.push(entry);
     await saveScores();
-    const rank = leaderboard(Infinity).findIndex((s) => s.name.toLowerCase() === name.toLowerCase()) + 1;
+    const first = rank === 1;
     return json(res, 201, {
       ok: true,
       rank,
       timeMs: entry.timeMs,
-      discountText: config.texts.discountText,
-      discountCode: config.texts.discountCode,
+      discountText: first ? config.texts.discountText : config.texts.discountTextOther,
+      discountCode: first ? config.texts.discountCode : config.texts.discountCodeOther,
     });
   }
 
@@ -457,11 +461,14 @@ async function handle(req, res) {
       if (body.texts) {
         if ('title' in body.texts) texts.title = cleanText(body.texts.title, 40) || DEFAULT_TEXTS.title;
         if ('leaderboardIntro' in body.texts) texts.leaderboardIntro = cleanText(body.texts.leaderboardIntro, 300);
-        if ('discountText' in body.texts) texts.discountText = cleanText(body.texts.discountText, 200);
-        if ('discountCode' in body.texts) {
-          const code = cleanText(body.texts.discountCode, 60);
-          if (!code) errors.push('Rabattkoden får inte vara tom.');
-          else texts.discountCode = code;
+        for (const key of ['discountText', 'discountTextOther']) {
+          if (key in body.texts) texts[key] = cleanText(body.texts[key], 200);
+        }
+        for (const key of ['discountCode', 'discountCodeOther']) {
+          if (!(key in body.texts)) continue;
+          const code = cleanText(body.texts[key], 60);
+          if (!code) errors.push('Rabattkoderna får inte vara tomma.');
+          else texts[key] = code;
         }
       }
       if (errors.length) return json(res, 400, { error: errors.join('\n') });

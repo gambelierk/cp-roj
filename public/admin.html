@@ -62,9 +62,12 @@
         <div class="texts">
           <label>Spelets namn<input type="text" id="t-title" maxlength="40"></label>
           <label>Text ovanför topplistan<textarea id="t-leaderboardIntro" maxlength="300" rows="2"></textarea></label>
-          <label>Text ovanför rabattkoden<input type="text" id="t-discountText" maxlength="200"></label>
-          <label>Rabattkod (visas efter att spelaren har vunnit och sparat sitt namn)<input type="text" id="t-discountCode" maxlength="60"></label>
-          <p class="muted">Skapa en rabattkod med exakt samma namn i Shopify under <b>Rabatter</b>, annars fungerar den inte i kassan.</p>
+          <p class="muted">Rabattkoderna visas när spelaren har vunnit och sparat sitt namn. Den som tar <b>plats 1</b> med sin tid får den första koden, alla andra får den andra.
+            Skapa rabattkoder med exakt samma namn i Shopify under <b>Rabatter</b>, annars fungerar de inte i kassan.</p>
+          <label>Rabattkod för plats 1<input type="text" id="t-discountCode" maxlength="60"></label>
+          <label>Text ovanför koden för plats 1<input type="text" id="t-discountText" maxlength="200"></label>
+          <label>Rabattkod för övriga placeringar<input type="text" id="t-discountCodeOther" maxlength="60"></label>
+          <label>Text ovanför koden för övriga<input type="text" id="t-discountTextOther" maxlength="200"></label>
         </div>
       </div>
       <div class="preview-wrap">

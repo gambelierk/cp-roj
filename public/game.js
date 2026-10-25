@@ -628,7 +628,7 @@
       myLastName = name;
       showLeaderboard(name);
       // Visa rabattkoden i stället för formuläret.
-      $('rankText').textContent = `Sparat! Du ligger på plats ${res.rank} på topplistan.`;
+      $('rankText').textContent = `Sparat! Din tid räcker till plats ${res.rank} på topplistan.`;
       $('discountText').textContent = res.discountText || '';
       $('discountText').hidden = !res.discountText;
       $('discountCode').textContent = res.discountCode || '';
