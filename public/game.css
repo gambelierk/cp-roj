@@ -309,4 +309,7 @@ body.ready { visibility: visible; }
 
 /* Visas i popup på butikssidan: popupen har redan en titelrad. */
 .in-popup .app > .window:first-child > .titlebar { display: none; }
-.in-popup .app { padding-top: 8px; }
+/* Spelet och topplistan fyller hela popup-rutan, utan kanter runt om. */
+html.in-popup, html.in-popup body { background: var(--frame); }
+.in-popup .app { padding: 0; gap: 0; align-items: stretch; }
+.in-popup .app > .window { width: 100%; border: 0; padding: 0; }
