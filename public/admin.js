@@ -142,7 +142,7 @@
     }
     try {
       const saved = await request('/api/admin/config', { method: 'PUT', body: { colors: current.colors, texts: current.texts } });
-      current = { ...current, colors: saved.colors, texts: saved.texts, icons: saved.icons, faces: saved.faces, lossImage: saved.lossImage };
+      current = { ...current, colors: saved.colors, texts: saved.texts, icons: saved.icons, faces: saved.faces, lossImage: saved.lossImage, flagImage: saved.flagImage };
       fillForm();
       pushPreview();
       setStatus(status, 'Sparat! Ändringarna syns nu i spelet.', 'ok');
@@ -308,6 +308,57 @@
       list.appendChild(li);
     }
   }
+
+  // ---------- Flagga ----------
+
+  const FLAG_SVG = '<svg viewBox="0 0 16 16" width="40" height="40" aria-hidden="true"><path d="M7 2h1.5v9H7z" fill="#000"/><path d="M8.5 2 3 4.75 8.5 7.5z" fill="#f00"/><path d="M4 11.5h7.5V13H4zM3 13h9.5v1.5H3z" fill="#000"/></svg>';
+
+  function renderFlag() {
+    const box = $('flagPreview');
+    box.textContent = '';
+    if (current.flagImage) {
+      const img = document.createElement('img');
+      img.src = current.flagImage;
+      img.alt = '';
+      box.appendChild(img);
+    } else {
+      box.innerHTML = FLAG_SVG;
+    }
+    $('flagName').textContent = current.flagImage ? 'Egen flagga' : 'Standardflagga';
+    $('removeFlag').hidden = !current.flagImage;
+    $('flagUploadLabel').textContent = current.flagImage ? 'Byt bild' : 'Ladda upp bild';
+  }
+
+  $('flagInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    const status = $('flagStatus');
+    if (file.size > 1024 * 1024) return setStatus(status, `${file.name}: större än 1 MB`, 'err');
+    setStatus(status, 'Laddar upp…');
+    try {
+      const cfg = await request('/api/admin/flag-image', { method: 'PUT', body: { data: await readAsDataUrl(file) } });
+      current.flagImage = cfg.flagImage;
+      renderFlag();
+      pushPreview();
+      setStatus(status, 'Flaggan är sparad.', 'ok');
+    } catch (err) {
+      setStatus(status, err.message, 'err');
+    }
+  });
+
+  $('removeFlag').addEventListener('click', async () => {
+    if (!confirm('Ta bort den egna flaggan?')) return;
+    try {
+      const cfg = await request('/api/admin/flag-image', { method: 'DELETE' });
+      current.flagImage = cfg.flagImage;
+      renderFlag();
+      pushPreview();
+      setStatus($('flagStatus'), 'Standardflaggan används igen.', 'ok');
+    } catch (err) {
+      setStatus($('flagStatus'), err.message, 'err');
+    }
+  });
 
   // ---------- Förlustbild ----------
 
@@ -583,12 +634,13 @@
     try {
       const cfg = await request('/api/admin/config');
       defaults = cfg.defaults;
-      current = { colors: { ...cfg.colors }, texts: { ...cfg.texts }, icons: cfg.icons, faces: cfg.faces, lossImage: cfg.lossImage };
+      current = { colors: { ...cfg.colors }, texts: { ...cfg.texts }, icons: cfg.icons, faces: cfg.faces, lossImage: cfg.lossImage, flagImage: cfg.flagImage };
       buildColorInputs();
       fillForm();
       renderIcons();
       renderFaces();
       renderLoss();
+      renderFlag();
       pushPreview();
       await Promise.all([loadScores(), loadStats()]);
     } catch (err) {

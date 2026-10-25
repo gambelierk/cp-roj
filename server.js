@@ -88,6 +88,7 @@ function loadConfig() {
     icons: Array.isArray(stored.icons) ? stored.icons : [],
     faces: stored.faces && typeof stored.faces === 'object' ? stored.faces : {},
     lossImage: typeof stored.lossImage === 'string' ? stored.lossImage : null,
+    flagImage: typeof stored.flagImage === 'string' ? stored.flagImage : null,
   };
 }
 
@@ -214,6 +215,7 @@ function publicConfig(admin = false) {
     icons: config.icons.map((icon) => ({ id: icon.id, url: `/uploads/${icon.file}`, ...(admin ? { name: icon.name } : {}) })),
     faces: Object.fromEntries(FACE_STATES.map((state) => [state, config.faces[state] ? `/uploads/${config.faces[state]}` : null])),
     lossImage: config.lossImage ? `/uploads/${config.lossImage}` : null,
+    flagImage: config.flagImage ? `/uploads/${config.flagImage}` : null,
   };
 }
 
@@ -507,14 +509,17 @@ async function handle(req, res) {
       return json(res, 200, publicConfig(true));
     }
 
-    if (p === '/api/admin/loss-image' && (m === 'PUT' || m === 'DELETE')) {
-      const oldFile = config.lossImage;
+    // Enskilda bilder: förlustbilden och flaggan.
+    const imageMatch = /^\/api\/admin\/(loss|flag)-image$/.exec(p);
+    if (imageMatch && (m === 'PUT' || m === 'DELETE')) {
+      const key = `${imageMatch[1]}Image`;
+      const oldFile = config[key];
       let file = null;
       if (m === 'PUT') {
         const body = await readJsonBody(req, Math.ceil(MAX_ICON_BYTES * 1.4) + 4096);
         file = await saveUpload(body.data);
       }
-      config = { ...config, lossImage: file };
+      config = { ...config, [key]: file };
       await saveConfig();
       if (oldFile) await fsp.unlink(path.join(UPLOAD_DIR, oldFile)).catch(() => {});
       return json(res, 200, publicConfig(true));

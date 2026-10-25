@@ -210,6 +210,7 @@ body.ready { visibility: visible; }
   display: block;
 }
 .cell .flag-icon { width: 70%; height: 70%; }
+.flag-mode .flag-img { width: 18px; height: 18px; object-fit: contain; }
 .cell.wrong { position: relative; }
 .cell.wrong::after {
   content: "";

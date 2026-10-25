@@ -4,6 +4,7 @@ En kopia av klassiska Röj (Minesweeper) med:
 
 - **Egna ikoner som minor**: ladda upp en eller flera bilder i admin. Med flera ikoner slumpas en ikon per mina.
 - **Egen smileyknapp**: byt smileyn mot egna bilder (PNG m.fl.) – en standardbild och valfritt egna bilder för klick, vinst och förlust.
+- **Egen flagga**: byt flaggan på flaggade rutor (och på flagga-knappen) mot en egen bild.
 - **Förlustbild**: när spelaren förlorar rinner rött ned över spelplanen (som i Doom) och avtäcker en egen bild, nedskalad till en pixel per ruta.
 - **Egna färger**: alla UI-färger sätts med HEX-koder i adminpanelen, med live-förhandsvisning.
 - **Topplista med rabattkod**: den som vinner skriver in sitt namn på topplistan och får direkt en rabattkod (standard: *Överste CP-Röj*, ändras i admin).
@@ -76,7 +77,7 @@ Spelet laddas i en iframe som automatiskt anpassar sin höjd, så butikens tema 
 - När spelaren vinner skriver hen in sitt namn. Efter att namnet har sparats visas rabattkoden med en knapp för att kopiera den.
 - Rabattkoden och texten ovanför den ändras under *Utseende → Texter* i admin. **Skapa en rabattkod med exakt samma namn i Shopify** under *Rabatter*, annars fungerar den inte i kassan.
 - Koden finns inte i spelets publika kod, den skickas bara från servern efter en sparad vinst.
-- Topplistan visar topp 10, med bästa tiden per namn. I admin ser du alla resultat, kan ta bort olämpliga namn och exportera CSV.
+- Placeringen avgörs av tid: snabbaste vinsten hamnar överst. Topplistan visar topp 10, med bästa tiden per namn (vid lika tid går den som spelade först före). I admin ser du alla resultat, kan ta bort olämpliga namn och exportera CSV.
 
 ## Statistik
 

@@ -15,6 +15,7 @@
     <a href="#utseende">Utseende</a>
     <a href="#ikoner">Ikoner</a>
     <a href="#smiley">Smiley</a>
+    <a href="#flagga">Flagga</a>
     <a href="#forlust">Förlustbild</a>
     <a href="#topplista">Topplista</a>
     <a href="#inbaddning">Inbäddning</a>
@@ -93,6 +94,21 @@
       Bara <b>Standard</b> behövs – lägen utan egen bild använder standardbilden. Utan bilder visas de vanliga smileysarna.</p>
     <p class="status" id="faceStatus" role="status"></p>
     <ul class="icons faces" id="faceList"></ul>
+  </section>
+
+  <section id="flagga" class="card">
+    <div class="card-head">
+      <h2>Flaggan</h2>
+      <div class="actions">
+        <button type="button" id="removeFlag" class="danger" hidden>Ta bort bilden</button>
+        <label class="upload primary"><span id="flagUploadLabel">Ladda upp bild</span>
+          <input type="file" id="flagInput" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml">
+        </label>
+      </div>
+    </div>
+    <p class="muted">Bilden som visas på rutor som spelaren har flaggat, och på knappen för flagga-läget. Kvadratisk PNG med transparent bakgrund blir snyggast, max 1 MB. Utan bild visas den vanliga röda flaggan.</p>
+    <p class="status" id="flagStatus" role="status"></p>
+    <ul class="icons faces"><li><div class="face-preview" id="flagPreview"></div><span class="name" id="flagName"></span></li></ul>
   </section>
 
   <section id="forlust" class="card">

@@ -28,6 +28,20 @@
   const MINE_SVG = '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="currentColor"><circle cx="8" cy="8" r="4.6"/><path d="M7.4 1h1.2v14H7.4zM1 7.4h14v1.2H1z"/><path d="m3.1 3.9.8-.8 9 9-.8.8zM12.1 3.1l.8.8-9 9-.8-.8z"/></g><path d="M5.7 5.7h1.8v1.8H5.7z" fill="#fff"/></svg>';
   const FLAG_SVG = '<svg class="flag-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M7 2h1.5v9H7z" fill="currentColor"/><path d="M8.5 2 3 4.75 8.5 7.5z" class="flag-cloth"/><path d="M4 11.5h7.5V13H4zM3 13h9.5v1.5H3z" fill="currentColor"/></svg>';
 
+  function flagElement() {
+    if (config.flagImage) {
+      const img = document.createElement('img');
+      img.src = config.flagImage;
+      img.alt = '';
+      img.draggable = false;
+      img.className = 'flag-img';
+      return img;
+    }
+    const span = document.createElement('span');
+    span.innerHTML = FLAG_SVG;
+    return span.firstChild;
+  }
+
   let config = { colors: {}, texts: {}, icons: [] };
   let state = null;
   let flagMode = false;
@@ -51,6 +65,10 @@
     for (const icon of cfg.icons || []) new Image().src = icon.url;
     for (const url of Object.values(cfg.faces || {})) if (url) new Image().src = url;
     loadLossImage(cfg.lossImage);
+    if (cfg.flagImage) new Image().src = cfg.flagImage;
+    // Flagga-lägesknappen använder samma flagga som spelplanen.
+    const modeIcon = flagModeBtn.querySelector('.flag-icon, img');
+    modeIcon.replaceWith(flagElement());
     setFace(faceState);
     if (state && state.over) renderAll();
   }
@@ -418,7 +436,7 @@
       }
     }
     if (cell.flag) {
-      el.innerHTML = FLAG_SVG;
+      el.appendChild(flagElement());
       el.setAttribute('aria-label', 'flagga');
     } else {
       el.removeAttribute('aria-label');
