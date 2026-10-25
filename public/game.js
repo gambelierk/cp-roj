@@ -13,6 +13,8 @@
   const LONG_PRESS_MS = 380;
   // Förhandsvisningen i admin räknas inte i statistiken och sparar inga resultat.
   const PREVIEW = new URLSearchParams(location.search).has('preview');
+  // I popupen har rutan redan en titelrad, så spelets egen döljs.
+  if (new URLSearchParams(location.search).has('popup')) document.documentElement.classList.add('in-popup');
   // Butikens adress från inbäddningen; används om ingen adress är inställd i admin.
   const EMBED_SHOP = (() => {
     try {

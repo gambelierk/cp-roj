@@ -616,16 +616,26 @@
 
   // ---------- Inbäddning ----------
 
-  const embedCode = `<div id="cp-roj"></div>\n<script src="${location.origin}/embed.js" async></script>`;
-  $('embedCode').textContent = embedCode;
-  $('copyEmbed').addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(embedCode);
-      $('copyEmbed').textContent = 'Kopierat!';
-      setTimeout(() => { $('copyEmbed').textContent = 'Kopiera kod'; }, 1500);
-    } catch {
-      prompt('Kopiera koden:', embedCode);
-    }
+  $('embedCode').textContent = `<div id="cp-roj"></div>\n<script src="${location.origin}/embed.js" async></script>`;
+  $('popupCode').textContent = [
+    `<script src="${location.origin}/embed.js"`,
+    '  data-mode="popup"',
+    '  data-button-text="Spela & vinn rabatt"',
+    '  data-auto-open="10"',
+    '  data-repeat-days="7"',
+    '  async></script>',
+  ].join('\n');
+  document.querySelectorAll('button.copy').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const code = $(btn.dataset.copy).textContent;
+      try {
+        await navigator.clipboard.writeText(code);
+        btn.textContent = 'Kopierat!';
+        setTimeout(() => { btn.textContent = 'Kopiera kod'; }, 1500);
+      } catch {
+        prompt('Kopiera koden:', code);
+      }
+    });
   });
 
   // ---------- Start ----------

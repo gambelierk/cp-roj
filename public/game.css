@@ -306,3 +306,7 @@ body.ready { visibility: visible; }
 .lb-list li .lb-time { font-variant-numeric: tabular-nums; }
 .lb-list li.empty { display: block; text-align: center; opacity: .7; padding: 12px; }
 .lb-list li.empty::before { content: none; }
+
+/* Visas i popup på butikssidan: popupen har redan en titelrad. */
+.in-popup .app > .window:first-child > .titlebar { display: none; }
+.in-popup .app { padding-top: 8px; }

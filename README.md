@@ -9,7 +9,7 @@ En kopia av klassiska Röj (Minesweeper) med:
 - **Egna färger**: alla UI-färger sätts med HEX-koder i adminpanelen, med live-förhandsvisning.
 - **Topplista med rabattkod**: den som vinner skriver in sitt namn på topplistan och får direkt en rabattkod: *Överste CP-Röj* för den som tar plats 1, annars *Medelmåttig CP-röjare* (båda ändras i admin).
 - **Statistik**: admin visar hur många omgångar som har påbörjats (första klicket) och avslutats (vunna och förlorade), totalt och per dag.
-- **Inbäddning på Shopify** med två rader kod.
+- **Inbäddning på Shopify** med två rader kod, på en sida eller som popup i hela butiken.
 - Klassisk spelplan 9×9 med 10 minor, säkert första klick, högerklick/långtryck för flagga, klick på siffra öppnar runt den, eget flagga-läge för mobil.
 
 Inga npm-beroenden. Kräver bara Node.js 18 eller senare.
@@ -71,6 +71,32 @@ Railway, Fly.io eller en vanlig VPS fungerar lika bra: starta med `node server.j
 ```
 
 Spelet laddas i en iframe som automatiskt anpassar sin höjd, så butikens tema och spelets stil inte påverkar varandra.
+
+### Som popup i hela butiken
+
+1. Gå till **Webbshop → Teman → … → Redigera kod** och öppna `layout/theme.liquid`.
+2. Klistra in följande precis före `</body>` och spara (koden med rätt adress finns också i admin):
+
+```html
+<script src="https://DIN-SERVER/embed.js"
+  data-mode="popup"
+  data-button-text="Spela & vinn rabatt"
+  data-auto-open="10"
+  data-repeat-days="7"
+  async></script>
+```
+
+En knapp nere i hörnet öppnar spelet i en ruta ovanpå butiken. Rutan stängs med krysset, Esc eller ett klick utanför.
+
+| Inställning | Betydelse |
+| --- | --- |
+| `data-auto-open="10"` | Öppna spelet själv efter 10 sekunder. Ta bort för att bara öppna med knappen. |
+| `data-repeat-days="7"` | Öppna själv högst en gång per 7 dagar och besökare. |
+| `data-button-text` | Texten på knappen. |
+| `data-position="left"` | Knappen nere till vänster i stället för höger. |
+| `data-button="false"` | Ingen flytande knapp. |
+
+Lägg till attributet `data-cp-roj-open` på valfri länk eller knapp i temat (t.ex. en banner) så öppnar den spelet. Knappen och popupen får samma färger som titelraden och ramen i spelet.
 
 ## Topplista och rabattkoder
 

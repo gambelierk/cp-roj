@@ -366,7 +366,10 @@ async function handle(req, res) {
 
   // ----- Publikt API -----
 
-  if (p === '/api/config' && m === 'GET') return json(res, 200, publicConfig());
+  if (p === '/api/config' && m === 'GET') {
+    // Popupen på butikssidan läser färgerna härifrån.
+    return send(res, 200, publicConfig(), { 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' });
+  }
 
   if (p === '/api/leaderboard' && m === 'GET') {
     return json(res, 200, leaderboard().map((s) => ({ name: s.name, timeMs: s.timeMs, date: s.createdAt.slice(0, 10) })));

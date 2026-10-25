@@ -155,13 +155,29 @@
 
   <section id="inbaddning" class="card">
     <h2>Bädda in på Shopify</h2>
+
+    <h3>På en sida</h3>
     <ol class="steps">
-      <li>Gå till <b>Webbshop → Teman → Anpassa</b> i Shopify och öppna sidan där spelet ska visas.</li>
+      <li>Gå till <b>Webbshop → Teman → Anpassa</b> i Shopify och öppna sidan där spelet ska visas, t.ex. <i>Varukorg</i>.</li>
       <li>Klicka <b>Lägg till sektion → Anpassad Liquid</b> (eller lägg koden i en sidas HTML-läge).</li>
       <li>Klistra in koden nedan och spara.</li>
     </ol>
     <pre id="embedCode"></pre>
-    <button type="button" id="copyEmbed">Kopiera kod</button>
+    <button type="button" class="copy" data-copy="embedCode">Kopiera kod</button>
+
+    <h3>Som popup i hela butiken</h3>
+    <ol class="steps">
+      <li>Gå till <b>Webbshop → Teman → … → Redigera kod</b> och öppna <b>layout/theme.liquid</b>.</li>
+      <li>Klistra in koden nedan precis före <code>&lt;/body&gt;</code> längst ned och spara.</li>
+    </ol>
+    <p class="muted">En knapp i hörnet öppnar spelet i en ruta ovanpå butiken. Ändra eller ta bort inställningarna efter behov:</p>
+    <ul class="muted">
+      <li><code>data-auto-open="10"</code> öppnar spelet själv efter 10 sekunder, högst en gång per <code>data-repeat-days</code> dagar och besökare. Ta bort raden om spelet bara ska öppnas med knappen.</li>
+      <li><code>data-button-text</code> är texten på knappen. <code>data-position="left"</code> lägger knappen till vänster, <code>data-button="false"</code> tar bort den.</li>
+      <li>Lägg till <code>data-cp-roj-open</code> på valfri länk eller knapp i temat, t.ex. en banner, så öppnar den spelet.</li>
+    </ul>
+    <pre id="popupCode"></pre>
+    <button type="button" class="copy" data-copy="popupCode">Kopiera kod</button>
   </section>
 </main>
 
