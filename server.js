@@ -18,12 +18,10 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 // Vilka sajter som får bädda in spelet i en iframe, t.ex. "https://dinbutik.se https://dinbutik.myshopify.com".
 const FRAME_ANCESTORS = process.env.FRAME_ANCESTORS || '*';
 
-// minMs: snabbare tider än så här (nära världsrekorden) räknas som fusk.
-const LEVELS = {
-  beginner: { label: 'Nybörjare', minMs: 1000 },
-  intermediate: { label: 'Medel', minMs: 6000 },
-  expert: { label: 'Expert', minMs: 25000 },
-};
+// Snabbare vinster än så här räknas som fusk och sparas inte på topplistan.
+const MIN_WIN_MS = 1000;
+// Datum i statistiken räknas i svensk tid.
+const STATS_TIME_ZONE = 'Europe/Stockholm';
 
 const DEFAULT_COLORS = {
   pageBg: '#ffffff',
@@ -53,10 +51,12 @@ const DEFAULT_COLORS = {
 
 const DEFAULT_TEXTS = {
   title: 'CP-Röj',
-  leaderboardIntro: 'Klara spelet snabbast och lämna din mailadress – de bästa kan få en rabattkod!',
-  consentText: 'Jag godkänner att min mailadress sparas så att jag kan kontaktas om en eventuell rabattkod.',
-  privacyUrl: '',
+  leaderboardIntro: 'Klara spelet och skriv in ditt namn på topplistan – då får du en rabattkod!',
+  discountText: 'Grattis! Här är din rabattkod:',
+  discountCode: 'Överste CP-Röj',
 };
+// Rabattkoden visas bara för den som har vunnit och sparat sitt namn, aldrig i den publika konfigurationen.
+const SECRET_TEXTS = ['discountCode'];
 
 // Smileyknappens lägen. Saknas en bild används "normal", och saknas den också visas en emoji.
 const FACE_STATES = ['normal', 'press', 'win', 'lose'];
@@ -70,6 +70,7 @@ const GAME_TTL_MS = 3 * 60 * 60 * 1000;
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const SCORES_FILE = path.join(DATA_DIR, 'scores.json');
+const STATS_FILE = path.join(DATA_DIR, 'stats.json');
 
 function readJson(file, fallback) {
   try {
@@ -83,7 +84,7 @@ function loadConfig() {
   const stored = readJson(CONFIG_FILE, {});
   return {
     colors: { ...DEFAULT_COLORS, ...(stored.colors || {}) },
-    texts: { ...DEFAULT_TEXTS, ...(stored.texts || {}) },
+    texts: Object.fromEntries(Object.entries(DEFAULT_TEXTS).map(([k, v]) => [k, typeof stored.texts?.[k] === 'string' ? stored.texts[k] : v])),
     icons: Array.isArray(stored.icons) ? stored.icons : [],
     faces: stored.faces && typeof stored.faces === 'object' ? stored.faces : {},
     lossImage: typeof stored.lossImage === 'string' ? stored.lossImage : null,
@@ -92,6 +93,8 @@ function loadConfig() {
 
 let config = loadConfig();
 let scores = readJson(SCORES_FILE, []);
+const emptyCounts = () => ({ started: 0, won: 0, lost: 0 });
+let stats = { ...emptyCounts(), days: {}, since: new Date().toISOString(), ...readJson(STATS_FILE, {}) };
 
 // Skrivningar köas så att två samtidiga anrop inte skriver över varandra.
 let writeQueue = Promise.resolve();
@@ -105,6 +108,28 @@ function persist(file, data) {
 }
 const saveConfig = () => persist(CONFIG_FILE, config);
 const saveScores = () => persist(SCORES_FILE, scores);
+
+// Statistiken ändras vid varje spel, så den sparas samlat högst en gång per par sekunder.
+let statsTimer = null;
+function saveStatsSoon() {
+  if (statsTimer) return;
+  statsTimer = setTimeout(() => {
+    statsTimer = null;
+    persist(STATS_FILE, stats);
+  }, 2000);
+}
+
+function dayKey(date = new Date()) {
+  return date.toLocaleDateString('sv-SE', { timeZone: STATS_TIME_ZONE });
+}
+
+function countStat(kind) {
+  const day = dayKey();
+  stats[kind] += 1;
+  stats.days[day] = stats.days[day] || emptyCounts();
+  stats.days[day][kind] += 1;
+  saveStatsSoon();
+}
 
 // ---------- Hjälpfunktioner ----------
 
@@ -182,26 +207,21 @@ function cleanText(value, max) {
   return String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
-function isValidEmail(email) {
-  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
-}
-
 function publicConfig(admin = false) {
   return {
     colors: config.colors,
-    texts: config.texts,
+    texts: admin ? config.texts : Object.fromEntries(Object.entries(config.texts).filter(([k]) => !SECRET_TEXTS.includes(k))),
     icons: config.icons.map((icon) => ({ id: icon.id, url: `/uploads/${icon.file}`, ...(admin ? { name: icon.name } : {}) })),
     faces: Object.fromEntries(FACE_STATES.map((state) => [state, config.faces[state] ? `/uploads/${config.faces[state]}` : null])),
     lossImage: config.lossImage ? `/uploads/${config.lossImage}` : null,
   };
 }
 
-function leaderboard(level, limit = 10) {
-  // En rad per mailadress: bästa tiden räknas.
+function leaderboard(limit = 10) {
+  // En rad per namn: bästa tiden räknas.
   const best = new Map();
   for (const s of scores) {
-    if (s.level !== level) continue;
-    const key = s.email.toLowerCase();
+    const key = s.name.toLowerCase();
     const prev = best.get(key);
     if (!prev || s.timeMs < prev.timeMs) best.set(key, s);
   }
@@ -343,58 +363,69 @@ async function handle(req, res) {
   if (p === '/api/config' && m === 'GET') return json(res, 200, publicConfig());
 
   if (p === '/api/leaderboard' && m === 'GET') {
-    const level = url.searchParams.get('level');
-    if (!LEVELS[level]) return json(res, 400, { error: 'Okänd nivå' });
-    return json(res, 200, leaderboard(level).map((s) => ({ name: s.name, timeMs: s.timeMs, date: s.createdAt.slice(0, 10) })));
+    return json(res, 200, leaderboard().map((s) => ({ name: s.name, timeMs: s.timeMs, date: s.createdAt.slice(0, 10) })));
   }
 
   if (p === '/api/game/start' && m === 'POST') {
     if (rateLimited(req, 'start', 120, 60 * 1000)) return json(res, 429, { error: 'För många förfrågningar' });
-    const body = await readJsonBody(req);
-    if (!LEVELS[body.level]) return json(res, 400, { error: 'Okänd nivå' });
     const id = crypto.randomBytes(16).toString('hex');
-    games.set(id, { level: body.level, startedAt: Date.now(), finishedAt: null, used: false });
+    games.set(id, { startedAt: Date.now(), finishedAt: null, result: null, used: false });
+    countStat('started');
     return json(res, 200, { id });
   }
 
+  // Vinst: servern sätter sluttiden. Varje omgång räknas bara en gång.
   if (p === '/api/game/finish' && m === 'POST') {
     const body = await readJsonBody(req);
     const game = games.get(String(body.id || ''));
-    if (!game) return json(res, 404, { error: 'Spelomgången hittades inte' });
-    if (!game.finishedAt) game.finishedAt = Date.now();
+    if (!game || game.result === 'lost') return json(res, 404, { error: 'Spelomgången hittades inte' });
+    if (!game.result) {
+      game.result = 'won';
+      game.finishedAt = Date.now();
+      countStat('won');
+    }
     return json(res, 200, { timeMs: game.finishedAt - game.startedAt });
+  }
+
+  if (p === '/api/game/lose' && m === 'POST') {
+    const body = await readJsonBody(req);
+    const game = games.get(String(body.id || ''));
+    if (!game) return json(res, 404, { error: 'Spelomgången hittades inte' });
+    if (!game.result) {
+      game.result = 'lost';
+      countStat('lost');
+    }
+    return json(res, 200, { ok: true });
   }
 
   if (p === '/api/scores' && m === 'POST') {
     if (rateLimited(req, 'score', 10, 60 * 1000)) return json(res, 429, { error: 'För många försök, vänta en stund.' });
     const body = await readJsonBody(req);
     const game = games.get(String(body.id || ''));
-    if (!game || !game.finishedAt) return json(res, 404, { error: 'Spelomgången hittades inte eller är inte avslutad.' });
+    if (!game || game.result !== 'won') return json(res, 404, { error: 'Spelomgången hittades inte eller är inte vunnen.' });
     if (game.used) return json(res, 409, { error: 'Resultatet är redan sparat.' });
-    if (game.finishedAt - game.startedAt < LEVELS[game.level].minMs) {
+    if (game.finishedAt - game.startedAt < MIN_WIN_MS) {
       return json(res, 400, { error: 'Tiden är orimligt snabb och kan inte sparas på topplistan.' });
     }
     const name = cleanText(body.name, 24);
-    const email = cleanText(body.email, 254).toLowerCase();
     if (!name) return json(res, 400, { error: 'Skriv ditt namn.' });
-    if (!isValidEmail(email)) return json(res, 400, { error: 'Skriv en giltig mailadress.' });
-    if (body.consent !== true) return json(res, 400, { error: 'Du behöver godkänna villkoren för att spara.' });
     game.used = true;
     const entry = {
       id: crypto.randomBytes(8).toString('hex'),
-      level: game.level,
       name,
-      email,
       timeMs: game.finishedAt - game.startedAt,
-      consent: true,
-      notified: false,
       createdAt: new Date().toISOString(),
     };
     scores.push(entry);
     await saveScores();
-    const board = leaderboard(game.level, Infinity);
-    const rank = board.findIndex((s) => s.email === email) + 1;
-    return json(res, 201, { ok: true, rank, timeMs: entry.timeMs });
+    const rank = leaderboard(Infinity).findIndex((s) => s.name.toLowerCase() === name.toLowerCase()) + 1;
+    return json(res, 201, {
+      ok: true,
+      rank,
+      timeMs: entry.timeMs,
+      discountText: config.texts.discountText,
+      discountCode: config.texts.discountCode,
+    });
   }
 
   // ----- Admin -----
@@ -424,11 +455,11 @@ async function handle(req, res) {
       if (body.texts) {
         if ('title' in body.texts) texts.title = cleanText(body.texts.title, 40) || DEFAULT_TEXTS.title;
         if ('leaderboardIntro' in body.texts) texts.leaderboardIntro = cleanText(body.texts.leaderboardIntro, 300);
-        if ('consentText' in body.texts) texts.consentText = cleanText(body.texts.consentText, 400) || DEFAULT_TEXTS.consentText;
-        if ('privacyUrl' in body.texts) {
-          const u = cleanText(body.texts.privacyUrl, 500);
-          if (u && !/^https?:\/\//i.test(u)) errors.push('Länken till integritetspolicyn måste börja med http:// eller https://');
-          else texts.privacyUrl = u;
+        if ('discountText' in body.texts) texts.discountText = cleanText(body.texts.discountText, 200);
+        if ('discountCode' in body.texts) {
+          const code = cleanText(body.texts.discountCode, 60);
+          if (!code) errors.push('Rabattkoden får inte vara tom.');
+          else texts.discountCode = code;
         }
       }
       if (errors.length) return json(res, 400, { error: errors.join('\n') });
@@ -489,13 +520,32 @@ async function handle(req, res) {
       return json(res, 200, publicConfig(true));
     }
 
+    if (p === '/api/admin/stats' && m === 'GET') {
+      const days = Object.entries(stats.days)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([day, c]) => ({ day, ...c }));
+      return json(res, 200, {
+        started: stats.started,
+        won: stats.won,
+        lost: stats.lost,
+        since: stats.since,
+        today: { day: dayKey(), ...emptyCounts(), ...(stats.days[dayKey()] || {}) },
+        days,
+      });
+    }
+
+    if (p === '/api/admin/stats' && m === 'DELETE') {
+      stats = { ...emptyCounts(), days: {}, since: new Date().toISOString() };
+      await persist(STATS_FILE, stats);
+      return json(res, 200, { ok: true });
+    }
+
     if (p === '/api/admin/scores' && m === 'GET') {
       return json(res, 200, [...scores].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     }
 
     if (p === '/api/admin/scores' && m === 'DELETE') {
-      const level = url.searchParams.get('level');
-      scores = LEVELS[level] ? scores.filter((s) => s.level !== level) : [];
+      scores = [];
       await saveScores();
       return json(res, 200, { ok: true });
     }
@@ -506,10 +556,9 @@ async function handle(req, res) {
         if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
         return `"${s.replace(/"/g, '""')}"`;
       };
-      const rows = [['Datum', 'Namn', 'E-post', 'Nivå', 'Tid (s)', 'Samtycke', 'Meddelad']];
-      for (const s of [...scores].sort((a, b) => a.level.localeCompare(b.level) || a.timeMs - b.timeMs)) {
-        rows.push([s.createdAt.replace('T', ' ').slice(0, 19), s.name, s.email, LEVELS[s.level].label,
-          (s.timeMs / 1000).toFixed(2).replace('.', ','), s.consent ? 'Ja' : 'Nej', s.notified ? 'Ja' : 'Nej']);
+      const rows = [['Datum', 'Namn', 'Tid (s)']];
+      for (const s of [...scores].sort((a, b) => a.timeMs - b.timeMs)) {
+        rows.push([s.createdAt.replace('T', ' ').slice(0, 19), s.name, (s.timeMs / 1000).toFixed(2).replace('.', ',')]);
       }
       const csv = `﻿${rows.map((r) => r.map(cell).join(';')).join('\r\n')}`;
       return send(res, 200, csv, {
@@ -523,12 +572,6 @@ async function handle(req, res) {
     if (scoreMatch) {
       const entry = scores.find((s) => s.id === scoreMatch[1]);
       if (!entry) return json(res, 404, { error: 'Raden hittades inte.' });
-      if (m === 'PATCH') {
-        const body = await readJsonBody(req);
-        if (typeof body.notified === 'boolean') entry.notified = body.notified;
-        await saveScores();
-        return json(res, 200, entry);
-      }
       if (m === 'DELETE') {
         scores = scores.filter((s) => s !== entry);
         await saveScores();
@@ -547,6 +590,16 @@ const server = http.createServer((req, res) => {
     if (!res.headersSent) json(res, err.status || 500, { error: err.status ? err.message : 'Serverfel' });
   });
 });
+
+// Spara statistiken direkt när Render startar om eller stänger tjänsten.
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => {
+    if (!statsTimer) process.exit(0);
+    clearTimeout(statsTimer);
+    statsTimer = null;
+    persist(STATS_FILE, stats).finally(() => process.exit(0));
+  });
+}
 
 if (require.main === module) {
   server.listen(PORT, () => {

@@ -16,8 +16,7 @@
       n5: 'Siffra 5', n6: 'Siffra 6', n7: 'Siffra 7', n8: 'Siffra 8',
     }],
   ];
-  const LEVEL_LABELS = { beginner: 'Nybörjare', intermediate: 'Medel', expert: 'Expert' };
-  const TEXT_KEYS = ['title', 'leaderboardIntro', 'consentText', 'privacyUrl'];
+  const TEXT_KEYS = ['title', 'leaderboardIntro', 'discountText', 'discountCode'];
 
   const $ = (id) => document.getElementById(id);
   const preview = $('preview');
@@ -312,7 +311,7 @@
 
   // ---------- Förlustbild ----------
 
-  const BOARD_SIZES = [['Nybörjare', 9, 9], ['Medel', 16, 16], ['Expert', 30, 16]];
+  const BOARD_SIZES = [['Spelplanen', 9, 9]];
 
   // Samma nedskalning som i spelet: beskär till brädets form och halvera i steg.
   function pixelate(img, cols, rows) {
@@ -427,67 +426,40 @@
   }
 
   function renderScores() {
-    const filter = $('scoreFilter').value;
     const tbody = $('scoreRows');
     tbody.textContent = '';
-    const rows = scores
-      .filter((s) => !filter || s.level === filter)
-      .sort((a, b) => a.level.localeCompare(b.level) || a.timeMs - b.timeMs);
+    const rows = [...scores].sort((a, b) => a.timeMs - b.timeMs);
     if (!rows.length) {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
-      td.colSpan = 8;
+      td.colSpan = 5;
       td.className = 'muted';
       td.textContent = 'Inga resultat ännu.';
       tr.appendChild(td);
       tbody.appendChild(tr);
       return;
     }
-    const rankByLevel = {};
-    for (const s of rows) {
-      rankByLevel[s.level] = (rankByLevel[s.level] || 0) + 1;
+    rows.forEach((s, idx) => {
       const tr = document.createElement('tr');
-      if (s.notified) tr.classList.add('notified');
       const cells = [
-        rankByLevel[s.level], s.name, s.email, LEVEL_LABELS[s.level] || s.level, formatTime(s.timeMs),
-        new Date(s.createdAt).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }),
+        [idx + 1, 'num'],
+        [s.name, ''],
+        [formatTime(s.timeMs), 'num'],
+        [new Date(s.createdAt).toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }), ''],
       ];
-      cells.forEach((v, idx) => {
+      for (const [v, cls] of cells) {
         const td = document.createElement('td');
-        if (idx === 4) td.className = 'num';
-        if (idx === 2) {
-          const a = document.createElement('a');
-          a.href = `mailto:${s.email}`;
-          a.textContent = s.email;
-          td.appendChild(a);
-        } else {
-          td.textContent = v;
-        }
+        td.className = cls;
+        td.textContent = v;
         tr.appendChild(td);
-      });
-      const tdN = document.createElement('td');
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = s.notified;
-      cb.setAttribute('aria-label', `Meddelad: ${s.name}`);
-      cb.addEventListener('change', async () => {
-        try {
-          const updated = await request(`/api/admin/scores/${s.id}`, { method: 'PATCH', body: { notified: cb.checked } });
-          s.notified = updated.notified;
-          tr.classList.toggle('notified', s.notified);
-        } catch (err) {
-          cb.checked = !cb.checked;
-          alert(err.message);
-        }
-      });
-      tdN.appendChild(cb);
+      }
       const tdD = document.createElement('td');
       const del = document.createElement('button');
       del.type = 'button';
       del.className = 'del danger';
       del.textContent = 'Ta bort';
       del.addEventListener('click', async () => {
-        if (!confirm(`Ta bort ${s.name} (${s.email}) från topplistan?`)) return;
+        if (!confirm(`Ta bort ${s.name} (${formatTime(s.timeMs)}) från topplistan?`)) return;
         try {
           await request(`/api/admin/scores/${s.id}`, { method: 'DELETE' });
           scores = scores.filter((x) => x !== s);
@@ -497,9 +469,9 @@
         }
       });
       tdD.appendChild(del);
-      tr.append(tdN, tdD);
+      tr.appendChild(tdD);
       tbody.appendChild(tr);
-    }
+    });
   }
 
   async function loadScores() {
@@ -507,19 +479,89 @@
     renderScores();
   }
 
-  $('scoreFilter').addEventListener('change', renderScores);
-
   $('clearScores').addEventListener('click', async () => {
-    const level = $('scoreFilter').value;
-    const what = level ? `alla resultat på nivån ${LEVEL_LABELS[level]}` : 'HELA topplistan (alla nivåer)';
-    if (!confirm(`Radera ${what}? Mailadresserna försvinner också. Exportera CSV först om du vill spara dem.`)) return;
+    if (!confirm('Radera HELA topplistan? Exportera CSV först om du vill spara den.')) return;
     try {
-      await request(`/api/admin/scores${level ? `?level=${level}` : ''}`, { method: 'DELETE' });
+      await request('/api/admin/scores', { method: 'DELETE' });
       await loadScores();
     } catch (err) {
       alert(err.message);
     }
   });
+
+  // ---------- Statistik ----------
+
+  const nf = new Intl.NumberFormat('sv-SE');
+
+  function tile(label, value, sub) {
+    const el = document.createElement('div');
+    el.className = 'stat-tile';
+    const l = document.createElement('span');
+    l.className = 'label';
+    l.textContent = label;
+    const v = document.createElement('span');
+    v.className = 'value';
+    v.textContent = nf.format(value);
+    const sEl = document.createElement('span');
+    sEl.className = 'sub';
+    sEl.textContent = sub;
+    el.append(l, v, sEl);
+    return el;
+  }
+
+  async function loadStats() {
+    try {
+      const st = await request('/api/admin/stats');
+      const finished = st.won + st.lost;
+      const t = st.today;
+      const tiles = $('statTiles');
+      tiles.textContent = '';
+      tiles.append(
+        tile('Påbörjade omgångar', st.started, `Idag: ${nf.format(t.started)}`),
+        tile('Avslutade omgångar', finished, `Idag: ${nf.format(t.won + t.lost)}`),
+        tile('Vunna', st.won, finished ? `${Math.round((st.won / finished) * 100)} % av avslutade` : `Idag: ${nf.format(t.won)}`),
+        tile('Förlorade', st.lost, `Idag: ${nf.format(t.lost)}`),
+      );
+      const tbody = $('statRows');
+      tbody.textContent = '';
+      if (!st.days.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 6;
+        td.className = 'muted';
+        td.textContent = 'Inga spelade omgångar ännu.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
+      for (const d of st.days) {
+        const tr = document.createElement('tr');
+        const values = [d.day, d.started, d.won + d.lost, d.won, d.lost, Math.max(0, d.started - d.won - d.lost)];
+        values.forEach((v, idx) => {
+          const td = document.createElement('td');
+          if (idx > 0) td.className = 'num';
+          td.textContent = idx > 0 ? nf.format(v) : v;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      }
+      const since = new Date(st.since).toLocaleDateString('sv-SE', { dateStyle: 'long' });
+      setStatus($('statsStatus'), `Räknat sedan ${since}. Senast uppdaterad ${new Date().toLocaleTimeString('sv-SE')}.`);
+    } catch (err) {
+      setStatus($('statsStatus'), `Kunde inte hämta statistiken: ${err.message}`, 'err');
+    }
+  }
+
+  $('refreshStats').addEventListener('click', loadStats);
+  $('resetStats').addEventListener('click', async () => {
+    if (!confirm('Nollställa all statistik? Det går inte att ångra.')) return;
+    try {
+      await request('/api/admin/stats', { method: 'DELETE' });
+      await loadStats();
+    } catch (err) {
+      setStatus($('statsStatus'), err.message, 'err');
+    }
+  });
+  setInterval(() => { if (!document.hidden) loadStats(); }, 60 * 1000);
 
   // ---------- Inbäddning ----------
 
@@ -548,7 +590,7 @@
       renderFaces();
       renderLoss();
       pushPreview();
-      await loadScores();
+      await Promise.all([loadScores(), loadStats()]);
     } catch (err) {
       setStatus($('configStatus'), `Kunde inte ladda inställningarna: ${err.message}`, 'err');
     }

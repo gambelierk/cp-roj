@@ -11,6 +11,7 @@
 <header class="top">
   <h1>CP-Röj <span>Admin</span></h1>
   <nav>
+    <a href="#statistik">Statistik</a>
     <a href="#utseende">Utseende</a>
     <a href="#ikoner">Ikoner</a>
     <a href="#smiley">Smiley</a>
@@ -21,6 +22,28 @@
 </header>
 
 <main>
+  <section id="statistik" class="card">
+    <div class="card-head">
+      <h2>Statistik</h2>
+      <div class="actions">
+        <button type="button" id="refreshStats">Uppdatera</button>
+        <button type="button" id="resetStats" class="danger">Nollställ statistik</button>
+      </div>
+    </div>
+    <p class="muted" id="statsInfo">En omgång räknas som <b>påbörjad</b> när spelaren klickar på första rutan, och som <b>avslutad</b> när den är vunnen eller förlorad. Spel i förhandsvisningen här räknas inte.</p>
+    <div class="stat-tiles" id="statTiles"></div>
+    <p class="status" id="statsStatus" role="status"></p>
+    <h3>Per dag</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Datum</th><th class="num">Påbörjade</th><th class="num">Avslutade</th><th class="num">Vunna</th><th class="num">Förlorade</th><th class="num">Ej avslutade</th></tr>
+        </thead>
+        <tbody id="statRows"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section id="utseende" class="card">
     <div class="card-head">
       <h2>Utseende</h2>
@@ -38,13 +61,14 @@
         <div class="texts">
           <label>Spelets namn<input type="text" id="t-title" maxlength="40"></label>
           <label>Text ovanför topplistan<textarea id="t-leaderboardIntro" maxlength="300" rows="2"></textarea></label>
-          <label>Samtyckestext (vid mailadress)<textarea id="t-consentText" maxlength="400" rows="3"></textarea></label>
-          <label>Länk till integritetspolicy (valfri)<input type="url" id="t-privacyUrl" placeholder="https://dinbutik.se/policies/privacy-policy"></label>
+          <label>Text ovanför rabattkoden<input type="text" id="t-discountText" maxlength="200"></label>
+          <label>Rabattkod (visas efter att spelaren har vunnit och sparat sitt namn)<input type="text" id="t-discountCode" maxlength="60"></label>
+          <p class="muted">Skapa en rabattkod med exakt samma namn i Shopify under <b>Rabatter</b>, annars fungerar den inte i kassan.</p>
         </div>
       </div>
       <div class="preview-wrap">
         <h3>Förhandsvisning</h3>
-        <iframe id="preview" src="/game" title="Förhandsvisning av CP-Röj"></iframe>
+        <iframe id="preview" src="/game?preview=1" title="Förhandsvisning av CP-Röj"></iframe>
         <p class="muted">Förhandsvisningen uppdateras direkt. Ändringarna syns för besökare först när du sparar.</p>
       </div>
     </div>
@@ -91,23 +115,17 @@
 
   <section id="topplista" class="card">
     <div class="card-head">
-      <h2>Topplista &amp; mailadresser</h2>
+      <h2>Topplista</h2>
       <div class="actions">
-        <select id="scoreFilter" aria-label="Filtrera på nivå">
-          <option value="">Alla nivåer</option>
-          <option value="beginner">Nybörjare</option>
-          <option value="intermediate">Medel</option>
-          <option value="expert">Expert</option>
-        </select>
         <a class="button ghost" href="/api/admin/scores.csv" download>Exportera CSV</a>
         <button type="button" id="clearScores" class="danger">Töm topplistan</button>
       </div>
     </div>
-    <p class="muted">Bocka i <b>Meddelad</b> när du har skickat rabattkod till spelaren. CSV-filen kan importeras i Shopify Kunder eller Klaviyo.</p>
+    <p class="muted">Alla sparade vinster. Den publika topplistan visar de 10 bästa, med bästa tiden per namn. Ta bort olämpliga namn här.</p>
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>#</th><th>Namn</th><th>E-post</th><th>Nivå</th><th class="num">Tid</th><th>Datum</th><th>Meddelad</th><th></th></tr>
+          <tr><th class="num">#</th><th>Namn</th><th class="num">Tid</th><th>Datum</th><th></th></tr>
         </thead>
         <tbody id="scoreRows"></tbody>
       </table>

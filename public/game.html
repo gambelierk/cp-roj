@@ -12,11 +12,6 @@
     <div class="titlebar"><span id="title">CP-Röj</span></div>
 
     <div class="toolbar">
-      <div class="levels" role="group" aria-label="Svårighetsgrad">
-        <button type="button" class="btn bevel-out" data-level="beginner" aria-pressed="true">Nybörjare</button>
-        <button type="button" class="btn bevel-out" data-level="intermediate" aria-pressed="false">Medel</button>
-        <button type="button" class="btn bevel-out" data-level="expert" aria-pressed="false">Expert</button>
-      </div>
       <button type="button" class="btn bevel-out flag-mode" id="flagMode" aria-pressed="false" title="Flagga-läge (för mobil)">
         <svg class="flag-icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h1.5v10H5z" fill="currentColor"/><path d="M6.5 2 12 4.75 6.5 7.5z" class="flag-cloth"/><path d="M3 12.5h6V14H3z" fill="currentColor"/></svg>
         <span>Flagga</span>
@@ -41,13 +36,6 @@
             <label>Namn
               <input type="text" name="name" maxlength="24" autocomplete="nickname" required>
             </label>
-            <label>Mailadress
-              <input type="email" name="email" maxlength="254" autocomplete="email" required>
-            </label>
-            <label class="consent">
-              <input type="checkbox" name="consent" required>
-              <span><span id="consentText"></span> <a id="privacyLink" href="#" target="_blank" rel="noopener" hidden>Integritetspolicy</a></span>
-            </label>
             <p class="form-msg" id="formMsg" role="alert"></p>
             <div class="win-actions">
               <button type="button" class="btn bevel-out" id="skipBtn">Hoppa över</button>
@@ -55,6 +43,19 @@
             </div>
           </div>
         </form>
+        <div class="win-card bevel-out" id="discountCard" hidden>
+          <div class="titlebar"><span>Din rabattkod</span></div>
+          <div class="win-body">
+            <p class="win-time" id="rankText"></p>
+            <p class="discount-text" id="discountText"></p>
+            <div class="discount-code bevel-in" id="discountCode"></div>
+            <p class="form-msg" id="copyMsg" role="status"></p>
+            <div class="win-actions">
+              <button type="button" class="btn bevel-out" id="copyCode">Kopiera koden</button>
+              <button type="button" class="btn bevel-out primary" id="closeDiscount">Stäng</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -65,11 +66,6 @@
     <div class="titlebar"><span id="lbHeading">Topplista</span></div>
     <div class="lb-body">
       <p class="lb-intro" id="lbIntro"></p>
-      <div class="levels" role="group" aria-label="Topplista per nivå" id="lbTabs">
-        <button type="button" class="btn bevel-out" data-level="beginner" aria-pressed="true">Nybörjare</button>
-        <button type="button" class="btn bevel-out" data-level="intermediate" aria-pressed="false">Medel</button>
-        <button type="button" class="btn bevel-out" data-level="expert" aria-pressed="false">Expert</button>
-      </div>
       <ol class="lb-list bevel-in" id="lbList"></ol>
     </div>
   </section>

@@ -69,13 +69,12 @@ body.ready { visibility: visible; }
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   gap: 6px;
   padding: 6px 6px 0;
 }
 
-.levels { display: flex; flex-wrap: wrap; gap: 4px; }
 
 .btn {
   font: inherit;
@@ -262,10 +261,20 @@ body.ready { visibility: visible; }
   border-color: var(--bevel-dark) var(--bevel-light) var(--bevel-light) var(--bevel-dark);
   width: 100%;
 }
-.win-body .consent { grid-template-columns: auto 1fr; align-items: start; gap: 6px; font-size: 12px; }
-.win-body .consent input { margin: 2px 0 0; width: 16px; height: 16px; }
 .win-body a { color: inherit; }
 .form-msg { margin: 0; min-height: 1em; font-size: 13px; font-weight: bold; white-space: pre-line; }
+.discount-text { margin: 0; font-size: 14px; }
+.discount-code {
+  background: var(--page-bg);
+  color: var(--text);
+  font-family: "Courier New", ui-monospace, monospace;
+  font-weight: bold;
+  font-size: 22px;
+  text-align: center;
+  padding: 10px 8px;
+  user-select: all;
+  overflow-wrap: anywhere;
+}
 .win-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 
 /* Topplista */

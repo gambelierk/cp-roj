@@ -1,11 +1,8 @@
 (() => {
   'use strict';
 
-  const LEVELS = {
-    beginner: { rows: 9, cols: 9, mines: 10 },
-    intermediate: { rows: 16, cols: 16, mines: 40 },
-    expert: { rows: 16, cols: 30, mines: 99 },
-  };
+  // Spelplanen: klassiska Nybörjare.
+  const BOARD = { rows: 9, cols: 9, mines: 10 };
   const COLOR_VARS = {
     pageBg: '--page-bg', frame: '--frame', bevelLight: '--bevel-light', bevelDark: '--bevel-dark',
     cellHidden: '--cell-hidden', cellOpen: '--cell-open', gridLine: '--grid-line',
@@ -14,6 +11,8 @@
     n1: '--n1', n2: '--n2', n3: '--n3', n4: '--n4', n5: '--n5', n6: '--n6', n7: '--n7', n8: '--n8',
   };
   const LONG_PRESS_MS = 380;
+  // Förhandsvisningen i admin räknas inte i statistiken och sparar inga resultat.
+  const PREVIEW = new URLSearchParams(location.search).has('preview');
   const MOVE_TOLERANCE = 10;
 
   const $ = (id) => document.getElementById(id);
@@ -31,10 +30,8 @@
 
   let config = { colors: {}, texts: {}, icons: [] };
   let state = null;
-  let level = 'beginner';
   let flagMode = false;
   let timerId = null;
-  let lbLevel = 'beginner';
   let myLastName = null;
 
   // ---------- Konfiguration ----------
@@ -50,10 +47,6 @@
     document.title = texts.title || 'CP-Röj';
     $('lbIntro').textContent = texts.leaderboardIntro || '';
     $('lbIntro').hidden = !texts.leaderboardIntro;
-    $('consentText').textContent = texts.consentText || '';
-    const link = $('privacyLink');
-    link.hidden = !texts.privacyUrl;
-    if (texts.privacyUrl) link.href = texts.privacyUrl;
     // Förladda ikonerna så att de syns direkt när en mina visas.
     for (const icon of cfg.icons || []) new Image().src = icon.url;
     for (const url of Object.values(cfg.faces || {})) if (url) new Image().src = url;
@@ -71,10 +64,9 @@
 
   // ---------- Spelplan ----------
 
-  function newGame(newLevel = level) {
-    level = newLevel;
+  function newGame() {
     stopTimer();
-    const { rows, cols, mines } = LEVELS[level];
+    const { rows, cols, mines } = BOARD;
     state = {
       rows, cols, mines,
       cells: Array.from({ length: rows * cols }, () => ({ mine: false, adj: 0, open: false, flag: false, icon: -1 })),
@@ -84,7 +76,6 @@
       gamePromise: null,
     };
     overlay.hidden = true;
-    document.querySelectorAll('.toolbar [data-level]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.level === level)));
 
     boardEl.style.setProperty('--cols', cols);
     boardEl.textContent = '';
@@ -153,7 +144,7 @@
     state.started = true;
     state.startTime = performance.now();
     const thisState = state;
-    state.gamePromise = api('/api/game/start', { level }).then((r) => r.id).catch(() => null);
+    state.gamePromise = PREVIEW ? Promise.resolve(null) : api('/api/game/start', {}).then((r) => r.id).catch(() => null);
     timerId = setInterval(() => {
       if (state !== thisState) return;
       const s = Math.min(999, Math.floor((performance.now() - state.startTime) / 1000));
@@ -227,6 +218,11 @@
     setFace('lose');
     renderAll();
     playLossMelt(state);
+    // Räknas som avslutad omgång i statistiken.
+    const lostState = state;
+    if (lostState.gamePromise) {
+      lostState.gamePromise.then((id) => id && api('/api/game/lose', { id })).catch(() => {});
+    }
   }
 
   // ---------- Förlustbild: rött rinner ned och avtäcker en pixelbild ----------
@@ -548,10 +544,6 @@
 
   faceEl.addEventListener('click', () => newGame());
 
-  document.querySelectorAll('.toolbar [data-level]').forEach((btn) => {
-    btn.addEventListener('click', () => newGame(btn.dataset.level));
-  });
-
   flagModeBtn.addEventListener('click', () => {
     flagMode = !flagMode;
     flagModeBtn.setAttribute('aria-pressed', String(flagMode));
@@ -582,11 +574,15 @@
     formMsg.textContent = '';
     winForm.dataset.gameId = '';
     $('saveBtn').disabled = true;
+    winForm.hidden = false;
+    $('discountCard').hidden = true;
     overlay.hidden = false;
     const id = await wonState.gamePromise;
     if (state !== wonState) return;
     if (!id) {
-      formMsg.textContent = 'Kunde inte nå servern – resultatet kan inte sparas just nu.';
+      formMsg.textContent = PREVIEW
+        ? 'Förhandsvisning – resultat sparas inte här.'
+        : 'Kunde inte nå servern – resultatet kan inte sparas just nu.';
       return;
     }
     try {
@@ -594,7 +590,6 @@
       if (state !== wonState) return;
       $('winTime').textContent = `Du klarade det på ${formatTime(timeMs)}!`;
       winForm.dataset.gameId = id;
-      winForm.dataset.level = level;
       $('saveBtn').disabled = false;
       if (myLastName && !winForm.elements.name.value) winForm.elements.name.value = myLastName;
       winForm.elements.name.focus({ preventScroll: true });
@@ -607,18 +602,22 @@
     e.preventDefault();
     const f = winForm.elements;
     const name = f.name.value.trim();
-    const email = f.email.value.trim();
     if (!name) { formMsg.textContent = 'Skriv ditt namn.'; return f.name.focus(); }
-    if (!f.email.checkValidity() || !email) { formMsg.textContent = 'Skriv en giltig mailadress.'; return f.email.focus(); }
-    if (!f.consent.checked) { formMsg.textContent = 'Kryssa i rutan för att spara ditt resultat.'; return; }
     $('saveBtn').disabled = true;
     formMsg.textContent = 'Sparar…';
     try {
-      const res = await api('/api/scores', { id: winForm.dataset.gameId, name, email, consent: true });
+      const res = await api('/api/scores', { id: winForm.dataset.gameId, name });
       myLastName = name;
-      formMsg.textContent = `Sparat! Du ligger på plats ${res.rank} på topplistan.`;
-      showLeaderboard(winForm.dataset.level, name);
-      setTimeout(() => { overlay.hidden = true; }, 1800);
+      showLeaderboard(name);
+      // Visa rabattkoden i stället för formuläret.
+      $('rankText').textContent = `Sparat! Du ligger på plats ${res.rank} på topplistan.`;
+      $('discountText').textContent = res.discountText || '';
+      $('discountText').hidden = !res.discountText;
+      $('discountCode').textContent = res.discountCode || '';
+      $('copyMsg').textContent = '';
+      winForm.hidden = true;
+      $('discountCard').hidden = false;
+      $('copyCode').focus({ preventScroll: true });
     } catch (err) {
       formMsg.textContent = err.message;
       $('saveBtn').disabled = false;
@@ -626,15 +625,29 @@
   });
 
   $('skipBtn').addEventListener('click', () => { overlay.hidden = true; });
+  $('closeDiscount').addEventListener('click', () => { overlay.hidden = true; });
 
-  async function showLeaderboard(lvl = lbLevel, highlightName = null) {
-    lbLevel = lvl;
-    document.querySelectorAll('#lbTabs [data-level]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.level === lvl)));
+  $('copyCode').addEventListener('click', async () => {
+    const code = $('discountCode').textContent;
+    try {
+      await navigator.clipboard.writeText(code);
+      $('copyMsg').textContent = 'Koden är kopierad.';
+    } catch {
+      // Urklipp är inte tillgängligt (t.ex. i vissa iframes): markera koden så att den kan kopieras själv.
+      const range = document.createRange();
+      range.selectNodeContents($('discountCode'));
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+      $('copyMsg').textContent = 'Koden är markerad – kopiera den med Ctrl+C eller håll inne.';
+    }
+  });
+
+  async function showLeaderboard(highlightName = null) {
     const list = $('lbList');
     try {
-      const res = await fetch(`/api/leaderboard?level=${encodeURIComponent(lvl)}`, { cache: 'no-store' });
+      const res = await fetch('/api/leaderboard', { cache: 'no-store' });
       const rows = await res.json();
-      if (lbLevel !== lvl) return;
       list.textContent = '';
       if (!rows.length) {
         const li = document.createElement('li');
@@ -645,7 +658,7 @@
       }
       for (const row of rows) {
         const li = document.createElement('li');
-        if (highlightName && row.name === highlightName) li.classList.add('me');
+        if (highlightName && row.name.toLowerCase() === highlightName.toLowerCase()) li.classList.add('me');
         const nameEl = document.createElement('span');
         nameEl.className = 'lb-name';
         nameEl.textContent = row.name;
@@ -663,10 +676,6 @@
       list.appendChild(li);
     }
   }
-
-  document.querySelectorAll('#lbTabs [data-level]').forEach((btn) => {
-    btn.addEventListener('click', () => showLeaderboard(btn.dataset.level));
-  });
 
   // ---------- Inbäddning: skicka höjden till Shopify-sidan ----------
 
@@ -688,7 +697,7 @@
       if (e.data.type === 'cp-roj:preview') applyConfig(e.data.config);
       if (e.data.type === 'cp-roj:preview-lose') {
         // "Testa förlust" i admin: öppna mitten och spräng sedan en mina.
-        newGame(level);
+        newGame();
         reveal(Math.floor(state.rows / 2) * state.cols + Math.floor(state.cols / 2));
         const mine = state.cells.findIndex((c) => c.mine);
         if (!state.over && mine >= 0) lose(mine);
@@ -698,9 +707,9 @@
 
   // ---------- Start ----------
 
-  newGame('beginner');
+  newGame();
   loadConfig().finally(() => {
     document.body.classList.add('ready');
-    showLeaderboard('beginner');
+    showLeaderboard();
   });
 })();

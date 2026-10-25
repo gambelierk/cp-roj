@@ -6,9 +6,10 @@ En kopia av klassiska Röj (Minesweeper) med:
 - **Egen smileyknapp**: byt smileyn mot egna bilder (PNG m.fl.) – en standardbild och valfritt egna bilder för klick, vinst och förlust.
 - **Förlustbild**: när spelaren förlorar rinner rött ned över spelplanen (som i Doom) och avtäcker en egen bild, nedskalad till en pixel per ruta.
 - **Egna färger**: alla UI-färger sätts med HEX-koder i adminpanelen, med live-förhandsvisning.
-- **Topplista**: den som vinner kan spara namn + mailadress (med samtycke) för att kunna få en rabattkod. Publikt visas bara namn och tid.
+- **Topplista med rabattkod**: den som vinner skriver in sitt namn på topplistan och får direkt en rabattkod (standard: *Överste CP-Röj*, ändras i admin).
+- **Statistik**: admin visar hur många omgångar som har påbörjats (första klicket) och avslutats (vunna och förlorade), totalt och per dag.
 - **Inbäddning på Shopify** med två rader kod.
-- Tre nivåer (Nybörjare 9×9, Medel 16×16, Expert 30×16), säkert första klick, högerklick/långtryck för flagga, klick på siffra öppnar runt den, eget flagga-läge för mobil.
+- Klassisk spelplan 9×9 med 10 minor, säkert första klick, högerklick/långtryck för flagga, klick på siffra öppnar runt den, eget flagga-läge för mobil.
 
 Inga npm-beroenden. Kräver bara Node.js 18 eller senare.
 
@@ -72,17 +73,24 @@ Spelet laddas i en iframe som automatiskt anpassar sin höjd, så butikens tema 
 
 ## Topplista och rabattkoder
 
-- Topplistan visar topp 10 per nivå, med bästa tiden per mailadress.
-- I admin ser du alla resultat med mailadresser, kan bocka i **Meddelad** när du skickat rabattkod, ta bort rader och **exportera CSV** (öppnas direkt i Excel, kan importeras i Shopify Kunder eller Klaviyo).
-- Rabattkoderna skickas manuellt (eller via ditt mailverktyg) – spelet skickar inga mail självt.
+- När spelaren vinner skriver hen in sitt namn. Efter att namnet har sparats visas rabattkoden med en knapp för att kopiera den.
+- Rabattkoden och texten ovanför den ändras under *Utseende → Texter* i admin. **Skapa en rabattkod med exakt samma namn i Shopify** under *Rabatter*, annars fungerar den inte i kassan.
+- Koden finns inte i spelets publika kod, den skickas bara från servern efter en sparad vinst.
+- Topplistan visar topp 10, med bästa tiden per namn. I admin ser du alla resultat, kan ta bort olämpliga namn och exportera CSV.
+
+## Statistik
+
+Under *Statistik* i admin visas:
+
+- **Påbörjade omgångar**: spelaren har klickat på första rutan.
+- **Avslutade omgångar**: vunna plus förlorade. Skillnaden mot påbörjade är omgångar som avbröts.
+- Samma siffror per dag (svensk tid), plus andel vunna.
+
+Spel i adminpanelens förhandsvisning räknas inte. Statistiken sparas i `stats.json` i `DATA_DIR` och kan nollställas i admin.
 
 ### Om fusk
 
-Tiden mäts på servern från första klicket till vinst, och orimligt snabba tider (nära världsrekorden) avvisas. Spelet körs ändå i webbläsaren, så en tekniskt kunnig person kan fejka en vinst. Titta därför igenom topplistan innan du delar ut rabattkoder.
-
-### GDPR
-
-Mailadresser sparas bara om spelaren kryssar i samtyckesrutan. Skriv in en länk till din integritetspolicy under *Texter* i admin, och radera uppgifter när de inte längre behövs (knappen *Töm topplistan* eller enskilda rader).
+Tiden mäts på servern från första klicket till vinst, och orimligt snabba vinster (under 1 sekund) avvisas. Spelet körs ändå i webbläsaren, så en tekniskt kunnig person kan fejka en vinst och få se rabattkoden. Använd därför en kod med en rimlig rabatt, gärna med begränsat antal användningar per kund i Shopify.
 
 ## Filer
 
@@ -93,5 +101,5 @@ cp-roj/
 │   ├── game.html/css/js  Själva spelet
 │   ├── embed.js          Inbäddningsskript för Shopify
 │   └── admin.*           Adminpanelen
-└── data/              Skapas automatiskt: config.json, scores.json, uploads/
+└── data/              Skapas automatiskt: config.json, scores.json, stats.json, uploads/
 ```

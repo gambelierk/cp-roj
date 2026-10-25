@@ -83,7 +83,6 @@ th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--lin
 th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 td .del { font-size: 12px; padding: 3px 9px; }
-tr.notified td { color: var(--muted); }
 
 .steps { padding-left: 20px; }
 pre { background: #18181a; color: #e8e8e3; padding: 14px; border-radius: 8px; overflow-x: auto; font-size: 13px; }
@@ -93,3 +92,9 @@ pre { background: #18181a; color: #e8e8e3; padding: 14px; border-radius: 8px; ov
 .loss-previews canvas { image-rendering: pixelated; border: 1px solid var(--line); background: #c0c0c0; }
 .loss-previews figcaption { font-size: 12px; color: var(--muted); }
 .loss-previews .source { max-width: 180px; max-height: 144px; border: 1px solid var(--line); border-radius: 4px; }
+
+.stat-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 14px; }
+.stat-tile { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 2px; }
+.stat-tile .label { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.stat-tile .value { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.stat-tile .sub { font-size: 13px; color: var(--muted); }
