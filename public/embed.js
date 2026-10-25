@@ -26,7 +26,8 @@
   target.setAttribute('data-cp-roj-loaded', '1');
 
   var frame = document.createElement('iframe');
-  frame.src = origin + '/game';
+  // Butikens adress skickas med så att "Använd koden nu" kan lägga koden i rätt varukorg.
+  frame.src = origin + '/game?shop=' + encodeURIComponent(location.origin);
   frame.title = script.getAttribute('data-title') || 'CP-Röj';
   frame.setAttribute('scrolling', 'no');
   frame.style.cssText = 'display:block;width:100%;border:0;height:760px;overflow:hidden;background:transparent;';

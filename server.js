@@ -52,6 +52,8 @@ const DEFAULT_COLORS = {
 const DEFAULT_TEXTS = {
   title: 'CP-Röj',
   leaderboardIntro: 'Klara spelet och skriv in ditt namn på topplistan – då får du en rabattkod!',
+  // Butikens adress för knappen "Använd koden nu". Tom = adressen där spelet är inbäddat.
+  shopUrl: '',
   discountText: 'Grattis, du tog förstaplatsen! Här är din rabattkod:',
   discountCode: 'Överste CP-Röj',
   discountTextOther: 'Bra kämpat! Här är din rabattkod:',
@@ -461,6 +463,13 @@ async function handle(req, res) {
       if (body.texts) {
         if ('title' in body.texts) texts.title = cleanText(body.texts.title, 40) || DEFAULT_TEXTS.title;
         if ('leaderboardIntro' in body.texts) texts.leaderboardIntro = cleanText(body.texts.leaderboardIntro, 300);
+        if ('shopUrl' in body.texts) {
+          const raw = cleanText(body.texts.shopUrl, 200);
+          let origin = '';
+          try { origin = raw ? new URL(raw).origin : ''; } catch { /* ogiltig */ }
+          if (raw && !/^https?:\/\//i.test(origin)) errors.push('Butikens adress måste börja med https://, t.ex. https://dinbutik.se');
+          else texts.shopUrl = origin;
+        }
         for (const key of ['discountText', 'discountTextOther']) {
           if (key in body.texts) texts[key] = cleanText(body.texts[key], 200);
         }
