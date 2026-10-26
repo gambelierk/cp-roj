@@ -283,12 +283,12 @@
     }
   }
 
-  // ---------- Förlustbild: rött rinner ned och avtäcker en pixelbild ----------
+  // ---------- Förlustbild: rött rinner ned och avtäcker bilden ----------
 
   const MELT_DELAY_MS = 1700; // visa först vilken mina som small
   const MELT_FALL_S = 1.2; // tid för det röda att rinna hela vägen ned
   const MELT_HOLD_S = 0.25; // hur länge en ruta är helt röd
-  const MELT_FADE_S = 0.7; // övergång från rött till bildens färg
+  const MELT_FADE_S = 0.7; // övergång från rött till bilden
   let lossImg = null;
 
   function loadLossImage(url) {
@@ -296,52 +296,28 @@
     if (lossImg && lossImg.url === url) return;
     const img = new Image();
     img.src = url;
-    lossImg = { url, img, pixels: {} };
+    lossImg = { url, img };
   }
 
-  // Skalar ned bilden till exakt en pixel per ruta (beskuren till brädets proportioner).
-  async function lossPixels(cols, rows) {
-    const key = `${cols}x${rows}`;
-    if (lossImg.pixels[key]) return lossImg.pixels[key];
+  // Ritar bilden i full upplösning över hela spelplanen, beskuren från mitten till brädets form.
+  async function lossPicture(width, height) {
     const { img } = lossImg;
     await img.decode();
     const iw = img.naturalWidth || 300;
     const ih = img.naturalHeight || 300;
-    const ratio = cols / rows;
     let sw = iw;
     let sh = ih;
-    if (iw / ih > ratio) sw = ih * ratio; else sh = iw / ratio;
-    const sx = (iw - sw) / 2;
-    const sy = (ih - sh) / 2;
-    const first = Math.min(1, 1024 / Math.max(sw, sh));
-    let w = Math.max(cols, Math.round(sw * first));
-    let h = Math.max(rows, Math.round(sh * first));
-    let canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    let ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (iw / ih > width / height) sw = ih * (width / height); else sh = iw * (height / width);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    // Genomskinliga delar av bilden visas mot färgen för öppnade rutor.
+    ctx.fillStyle = config.colors.cellOpen || '#c0c0c0';
+    ctx.fillRect(0, 0, width, height);
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, w, h);
-    // Halvera i steg så att varje pixel blir ett medelvärde av sitt område.
-    while (w > cols || h > rows) {
-      const nw = Math.max(cols, Math.ceil(w / 2));
-      const nh = Math.max(rows, Math.ceil(h / 2));
-      const next = document.createElement('canvas');
-      next.width = nw;
-      next.height = nh;
-      const nctx = next.getContext('2d', { willReadFrequently: true });
-      nctx.imageSmoothingQuality = 'high';
-      nctx.drawImage(canvas, 0, 0, w, h, 0, 0, nw, nh);
-      canvas = next;
-      ctx = nctx;
-      w = nw;
-      h = nh;
-    }
-    const data = ctx.getImageData(0, 0, cols, rows).data;
-    const pixels = [];
-    for (let i = 0; i < cols * rows; i++) pixels.push([data[i * 4], data[i * 4 + 1], data[i * 4 + 2], data[i * 4 + 3]]);
-    lossImg.pixels[key] = pixels;
-    return pixels;
+    ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, width, height);
+    return canvas;
   }
 
   function hexToRgb(hex) {
@@ -349,18 +325,16 @@
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
   const mix = (a, b, k) => [0, 1, 2].map((j) => Math.round(a[j] + (b[j] - a[j]) * k));
-  const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
+  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
 
   async function playLossMelt(forState) {
     if (!lossImg) return;
-    const delay = new Promise((r) => setTimeout(r, MELT_DELAY_MS));
-    let pixels;
     try {
-      pixels = await lossPixels(forState.cols, forState.rows);
+      await lossImg.img.decode();
     } catch {
       return;
     }
-    await delay;
+    await new Promise((r) => setTimeout(r, MELT_DELAY_MS));
     if (state !== forState) return;
 
     const { cols, rows } = forState;
@@ -374,12 +348,10 @@
     const ctx = canvas.getContext('2d');
     const cw = canvas.width / cols;
     const ch = canvas.height / rows;
-
-    const drip = hexToRgb(config.colors.lossDrip || '#b00000');
-    const base = hexToRgb(config.colors.cellOpen || '#c0c0c0');
-    const finalColors = pixels.map(([r, g, b, a]) => mix(base, [r, g, b], a / 255));
+    const picture = await lossPicture(canvas.width, canvas.height);
 
     // Som skärmsmältningen i Doom: varje kolumn startar lite före eller efter sin granne.
+    const drip = hexToRgb(config.colors.lossDrip || '#b00000');
     const starts = [];
     const shades = [];
     let d = Math.random() * 0.2;
@@ -389,17 +361,22 @@
       shades.push(mix(drip, [0, 0, 0], Math.random() * 0.22));
     }
 
-    const cellRect = (c, r, height) => {
+    // En del av en kolumn: bildens utsnitt för rutan, med rött ovanpå som tonar bort.
+    const drawCell = (c, r, height, redAlpha) => {
       const x = Math.floor(c * cw);
       const y = Math.floor(r * ch);
-      ctx.fillRect(x, y, Math.floor((c + 1) * cw) - x, Math.ceil(height));
+      const w = Math.floor((c + 1) * cw) - x;
+      const h = Math.min(Math.ceil(height), canvas.height - y);
+      if (w <= 0 || h <= 0) return;
+      if (redAlpha < 1) ctx.drawImage(picture, x, y, w, h, x, y, w, h);
+      if (redAlpha > 0) {
+        ctx.fillStyle = rgba(shades[c], redAlpha);
+        ctx.fillRect(x, y, w, h);
+      }
     };
 
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      for (let i = 0; i < cols * rows; i++) {
-        ctx.fillStyle = rgb(finalColors[i]);
-        cellRect(i % cols, Math.floor(i / cols), ch + 1);
-      }
+      ctx.drawImage(picture, 0, 0);
       return;
     }
 
@@ -420,12 +397,13 @@
           const k = Math.min(1, Math.max(0, (local - passedAt(r) - MELT_HOLD_S) / MELT_FADE_S));
           if (k < 1) done = false;
           const eased = k * k * (3 - 2 * k);
-          ctx.fillStyle = rgb(mix(shades[c], finalColors[r * cols + c], eased));
-          cellRect(c, r, r + 1 <= head ? ch + 1 : (head - r) * ch);
+          drawCell(c, r, r + 1 <= head ? ch + 1 : (head - r) * ch, 1 - eased);
         }
         if (head < rows) done = false;
       }
-      if (!done) requestAnimationFrame(frame);
+      // När allt har runnit klart ritas hela bilden en sista gång, utan skarvar mellan rutorna.
+      if (done) ctx.drawImage(picture, 0, 0);
+      else requestAnimationFrame(frame);
     };
     requestAnimationFrame(frame);
   }

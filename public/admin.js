@@ -474,38 +474,19 @@
 
   // ---------- Förlustbild ----------
 
-  const BOARD_SIZES = [['Spelplanen', 9, 9]];
-
-  // Samma nedskalning som i spelet: beskär till brädets form och halvera i steg.
-  function pixelate(img, cols, rows) {
+  // Samma beskärning som i spelet: från mitten till spelplanens kvadratiska form.
+  function cropToBoard(img, size) {
     const iw = img.naturalWidth || 300;
     const ih = img.naturalHeight || 300;
-    const ratio = cols / rows;
-    let sw = iw;
-    let sh = ih;
-    if (iw / ih > ratio) sw = ih * ratio; else sh = iw / ratio;
-    const first = Math.min(1, 1024 / Math.max(sw, sh));
-    let w = Math.max(cols, Math.round(sw * first));
-    let h = Math.max(rows, Math.round(sh * first));
-    let canvas = document.createElement('canvas');
-    canvas.width = w;
-    canvas.height = h;
-    let ctx = canvas.getContext('2d');
+    const side = Math.min(iw, ih);
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = (current.colors && current.colors.cellOpen) || '#c0c0c0';
+    ctx.fillRect(0, 0, size, size);
     ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(img, (iw - sw) / 2, (ih - sh) / 2, sw, sh, 0, 0, w, h);
-    while (w > cols || h > rows) {
-      const nw = Math.max(cols, Math.ceil(w / 2));
-      const nh = Math.max(rows, Math.ceil(h / 2));
-      const next = document.createElement('canvas');
-      next.width = nw;
-      next.height = nh;
-      ctx = next.getContext('2d');
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(canvas, 0, 0, w, h, 0, 0, nw, nh);
-      canvas = next;
-      w = nw;
-      h = nh;
-    }
+    ctx.drawImage(img, (iw - side) / 2, (ih - side) / 2, side, side, 0, 0, size, size);
     return canvas;
   }
 
@@ -533,17 +514,14 @@
     oc.textContent = 'Original';
     orig.append(src, oc);
     root.appendChild(orig);
-    for (const [label, cols, rows] of BOARD_SIZES) {
-      const fig = document.createElement('figure');
-      const small = pixelate(img, cols, rows);
-      const scale = Math.floor(144 / rows);
-      small.style.width = `${cols * scale}px`;
-      small.style.height = `${rows * scale}px`;
-      const cap = document.createElement('figcaption');
-      cap.textContent = `${label} (${cols}×${rows})`;
-      fig.append(small, cap);
-      root.appendChild(fig);
-    }
+    const fig = document.createElement('figure');
+    const board = cropToBoard(img, 288 * 2);
+    board.style.width = '144px';
+    board.style.height = '144px';
+    const cap = document.createElement('figcaption');
+    cap.textContent = `På spelplanen (originalets upplösning: ${img.naturalWidth}×${img.naturalHeight} px)`;
+    fig.append(board, cap);
+    root.appendChild(fig);
   }
 
   $('lossInput').addEventListener('change', async (e) => {

@@ -89,7 +89,7 @@ pre { background: #18181a; color: #e8e8e3; padding: 14px; border-radius: 8px; ov
 
 .loss-previews { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin-top: 10px; }
 .loss-previews figure { margin: 0; display: grid; gap: 6px; justify-items: start; }
-.loss-previews canvas { image-rendering: pixelated; border: 1px solid var(--line); background: #c0c0c0; }
+.loss-previews canvas { border: 1px solid var(--line); background: #c0c0c0; }
 .loss-previews figcaption { font-size: 12px; color: var(--muted); }
 .loss-previews .source { max-width: 180px; max-height: 144px; border: 1px solid var(--line); border-radius: 4px; }
 
