@@ -606,10 +606,11 @@
       return;
     }
     try {
-      const { timeMs } = await api('/api/game/finish', { id });
+      const finished = await api('/api/game/finish', { id });
       if (state !== wonState) return;
-      $('winTime').textContent = `Du klarade det på ${formatTime(timeMs)}!`;
-      winForm.dataset.gameId = id;
+      $('winTime').textContent = `Du klarade det på ${formatTime(finished.timeMs)}!`;
+      // Vinstbiljetten från servern används när namnet sparas.
+      winForm.dataset.gameId = finished.id || id;
       $('saveBtn').disabled = false;
       if (myLastName && !winForm.elements.name.value) winForm.elements.name.value = myLastName;
       winForm.elements.name.focus({ preventScroll: true });

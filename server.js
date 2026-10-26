@@ -264,10 +264,43 @@ function leaderboard(limit = 10) {
 
 // ---------- Spelomgångar (servern mäter tiden) ----------
 
-const games = new Map();
+// Varje omgång bärs av en signerad biljett (starttid, och vid vinst sluttid) som spelet skickar
+// tillbaka. Då överlever pågående omgångar att servern startar om, t.ex. vid en ny version på Render.
+const SECRET_FILE = path.join(DATA_DIR, 'secret.key');
+const GAME_SECRET = process.env.GAME_SECRET || (() => {
+  try {
+    return fs.readFileSync(SECRET_FILE, 'utf8').trim();
+  } catch {
+    const key = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(SECRET_FILE, key, { mode: 0o600 });
+    return key;
+  }
+})();
+
+function signToken(data) {
+  const body = Buffer.from(JSON.stringify(data)).toString('base64url');
+  const sig = crypto.createHmac('sha256', GAME_SECRET).update(body).digest('base64url');
+  return `${body}.${sig}`;
+}
+
+function readToken(token) {
+  const [body, sig] = String(token || '').split('.');
+  if (!body || !sig) return null;
+  const expected = crypto.createHmac('sha256', GAME_SECRET).update(body).digest('base64url');
+  if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+  try {
+    const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    return Date.now() - data.s > GAME_TTL_MS ? null : data;
+  } catch {
+    return null;
+  }
+}
+
+// Utfall per omgång, så att varje omgång bara räknas en gång i statistiken.
+const results = new Map();
 setInterval(() => {
   const cutoff = Date.now() - GAME_TTL_MS;
-  for (const [id, game] of games) if (game.startedAt < cutoff) games.delete(id);
+  for (const [id, r] of results) if (r.at < cutoff) results.delete(id);
   for (const [id, bucket] of rateBuckets) if (bucket.start < Date.now() - 10 * 60 * 1000) rateBuckets.delete(id);
 }, 10 * 60 * 1000).unref();
 
@@ -428,31 +461,34 @@ async function handle(req, res) {
 
   if (p === '/api/game/start' && m === 'POST') {
     if (rateLimited(req, 'start', 120, 60 * 1000)) return json(res, 429, { error: 'För många förfrågningar' });
-    const id = crypto.randomBytes(16).toString('hex');
-    games.set(id, { startedAt: Date.now(), finishedAt: null, result: null, used: false });
+    const id = crypto.randomBytes(12).toString('hex');
     countStat('started');
-    return json(res, 200, { id });
+    return json(res, 200, { id: signToken({ id, s: Date.now() }) });
   }
 
-  // Vinst: servern sätter sluttiden. Varje omgång räknas bara en gång.
+  // Vinst: servern sätter sluttiden och lämnar tillbaka en vinstbiljett att spara namnet med.
   if (p === '/api/game/finish' && m === 'POST') {
     const body = await readJsonBody(req);
-    const game = games.get(String(body.id || ''));
-    if (!game || game.result === 'lost') return json(res, 404, { error: 'Spelomgången hittades inte' });
-    if (!game.result) {
-      game.result = 'won';
-      game.finishedAt = Date.now();
+    const game = readToken(body.id);
+    if (!game) return json(res, 404, { error: 'Omgången gick inte att hitta. Starta ett nytt spel och försök igen.' });
+    if (game.r === 'won') return json(res, 200, { timeMs: game.f - game.s, id: body.id });
+    const prev = results.get(game.id);
+    if (prev && prev.result === 'lost') return json(res, 409, { error: 'Omgången är redan förlorad.' });
+    const finishedAt = prev ? prev.finishedAt : Date.now();
+    if (!prev) {
+      results.set(game.id, { result: 'won', finishedAt, at: game.s });
       countStat('won');
     }
-    return json(res, 200, { timeMs: game.finishedAt - game.startedAt });
+    const token = signToken({ id: game.id, s: game.s, f: finishedAt, r: 'won' });
+    return json(res, 200, { timeMs: finishedAt - game.s, id: token });
   }
 
   if (p === '/api/game/lose' && m === 'POST') {
     const body = await readJsonBody(req);
-    const game = games.get(String(body.id || ''));
-    if (!game) return json(res, 404, { error: 'Spelomgången hittades inte' });
-    if (!game.result) {
-      game.result = 'lost';
+    const game = readToken(body.id);
+    if (!game) return json(res, 404, { error: 'Omgången gick inte att hitta.' });
+    if (!results.has(game.id)) {
+      results.set(game.id, { result: 'lost', at: game.s });
       countStat('lost');
     }
     return json(res, 200, { ok: true });
@@ -461,19 +497,19 @@ async function handle(req, res) {
   if (p === '/api/scores' && m === 'POST') {
     if (rateLimited(req, 'score', 10, 60 * 1000)) return json(res, 429, { error: 'För många försök, vänta en stund.' });
     const body = await readJsonBody(req);
-    const game = games.get(String(body.id || ''));
-    if (!game || game.result !== 'won') return json(res, 404, { error: 'Spelomgången hittades inte eller är inte vunnen.' });
-    if (game.used) return json(res, 409, { error: 'Resultatet är redan sparat.' });
-    if (game.finishedAt - game.startedAt < MIN_WIN_MS) {
+    const game = readToken(body.id);
+    if (!game || game.r !== 'won') return json(res, 404, { error: 'Omgången gick inte att hitta. Starta ett nytt spel och försök igen.' });
+    if (scores.some((e) => e.gameId === game.id)) return json(res, 409, { error: 'Resultatet är redan sparat.' });
+    if (game.f - game.s < MIN_WIN_MS) {
       return json(res, 400, { error: 'Tiden är orimligt snabb och kan inte sparas på topplistan.' });
     }
     const name = cleanText(body.name, 24);
     if (!name) return json(res, 400, { error: 'Skriv ditt namn.' });
-    game.used = true;
     const entry = {
       id: crypto.randomBytes(8).toString('hex'),
+      gameId: game.id,
       name,
-      timeMs: game.finishedAt - game.startedAt,
+      timeMs: game.f - game.s,
       createdAt: new Date().toISOString(),
     };
     // Placeringen gäller den här omgångens tid: vid lika tid går den som spelade först före.
