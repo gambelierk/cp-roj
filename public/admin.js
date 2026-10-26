@@ -711,6 +711,7 @@
     `<script src="${location.origin}/embed.js"`,
     '  data-mode="popup"',
     '  data-button-text="Spela & vinn rabatt"',
+    '  data-position="left"',
     '  data-auto-open="10"',
     '  data-repeat-days="7"',
     '  async></script>',

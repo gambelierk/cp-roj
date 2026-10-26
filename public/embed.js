@@ -11,7 +11,7 @@
  * Inställningar för popup (alla valfria):
  *   data-button-text="Spela & vinn rabatt"  texten på den flytande knappen
  *   data-button="false"                      ingen flytande knapp
- *   data-position="left"                     knappen nere till vänster i stället för höger
+ *   data-position="left"                     knappen och rutan till vänster i stället för höger/mitten
  *   data-auto-open="10"                      öppna själv efter 10 sekunder
  *   data-repeat-days="7"                     öppna själv högst en gång per 7 dagar och besökare
  * Valfritt element med attributet data-cp-roj-open öppnar popupen när man klickar på det.
@@ -86,6 +86,8 @@
     '.cprj-backdrop{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.55);display:flex;',
     'align-items:center;justify-content:center;padding:12px;}',
     '.cprj-backdrop[hidden]{display:none;}',
+    // Till vänster: rutan ligger vid vänsterkanten, ovanför knappen.
+    '.cprj-backdrop.cprj-left{justify-content:flex-start;padding-left:calc(16px + env(safe-area-inset-left,0px));}',
     '.cprj-dialog{position:relative;width:min(440px,100%);max-height:calc(100% - 8px);display:flex;flex-direction:column;',
     'background:var(--cprj-frame);border:3px solid;border-color:#fff #808080 #808080 #fff;box-shadow:0 12px 40px rgba(0,0,0,.4);}',
     '.cprj-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 4px 4px 10px;',
@@ -99,12 +101,13 @@
 
   var launcher = document.createElement('button');
   launcher.type = 'button';
-  launcher.className = 'cprj-launcher ' + (attr('position', 'right') === 'left' ? 'cprj-left' : 'cprj-right');
+  var side = attr('position', 'right') === 'left' ? 'cprj-left' : 'cprj-right';
+  launcher.className = 'cprj-launcher ' + side;
   launcher.textContent = attr('button-text', 'Spela & vinn rabatt');
   launcher.setAttribute('aria-haspopup', 'dialog');
 
   var backdrop = document.createElement('div');
-  backdrop.className = 'cprj-backdrop';
+  backdrop.className = 'cprj-backdrop ' + side;
   backdrop.hidden = true;
   var dialog = document.createElement('div');
   dialog.className = 'cprj-dialog';
