@@ -285,7 +285,7 @@
 
   // ---------- Förlustbild: rött rinner ned och avtäcker en pixelbild ----------
 
-  const MELT_DELAY_MS = 700; // visa först vilken mina som small
+  const MELT_DELAY_MS = 1700; // visa först vilken mina som small
   const MELT_FALL_S = 1.2; // tid för det röda att rinna hela vägen ned
   const MELT_HOLD_S = 0.25; // hur länge en ruta är helt röd
   const MELT_FADE_S = 0.7; // övergång från rött till bildens färg
