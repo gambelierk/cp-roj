@@ -84,9 +84,10 @@
     '.cprj-launcher.cprj-left{left:calc(16px + env(safe-area-inset-left,0px));}',
     '.cprj-launcher:focus-visible,.cprj-close:focus-visible{outline:2px dotted currentColor;outline-offset:-6px;}',
     '.cprj-backdrop{position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.55);display:flex;',
-    'align-items:center;justify-content:center;padding:12px;}',
+    'align-items:center!important;justify-content:center!important;padding:12px!important;margin:0!important;}',
     '.cprj-backdrop[hidden]{display:none;}',
-    '.cprj-dialog{position:relative;width:min(440px,100%);max-height:calc(100% - 8px);display:flex;flex-direction:column;',
+    // margin:auto håller rutan centrerad även om butikens tema skulle påverka flex-placeringen.
+    '.cprj-dialog{position:relative;margin:auto!important;width:min(440px,100%);max-height:calc(100% - 8px);display:flex;flex-direction:column;',
     'background:var(--cprj-frame);border:3px solid;border-color:#fff #808080 #808080 #fff;box-shadow:0 12px 40px rgba(0,0,0,.4);}',
     '.cprj-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 4px 4px 10px;',
     'background:var(--cprj-title-bg);color:var(--cprj-title-text);font:bold 14px var(--cprj-font);}',
