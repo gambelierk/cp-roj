@@ -15,22 +15,6 @@
   const PREVIEW = new URLSearchParams(location.search).has('preview');
   // I popupen har rutan redan en titelrad, så spelets egen döljs.
   if (new URLSearchParams(location.search).has('popup')) document.documentElement.classList.add('in-popup');
-  // Butikens adress från inbäddningen; används om ingen adress är inställd i admin.
-  const EMBED_SHOP = (() => {
-    try {
-      const u = new URL(new URLSearchParams(location.search).get('shop') || '');
-      return /^https?:$/.test(u.protocol) ? u.origin : '';
-    } catch {
-      return '';
-    }
-  })();
-
-  // Shopify lägger in koden i varukorgen via /discount/<kod>.
-  function discountLink(code) {
-    const shop = ((config.texts && config.texts.shopUrl) || EMBED_SHOP).replace(/\/+$/, '');
-    if (!shop || !code) return '';
-    return `${shop}/discount/${encodeURIComponent(code)}?redirect=${encodeURIComponent('/cart')}`;
-  }
   const MOVE_TOLERANCE = 10;
 
   const $ = (id) => document.getElementById(id);
@@ -650,13 +634,10 @@
       $('discountText').textContent = res.discountText || '';
       $('discountText').hidden = !res.discountText;
       $('discountCode').textContent = res.discountCode || '';
-      const link = discountLink(res.discountCode);
-      $('useCode').hidden = !link;
-      if (link) $('useCode').href = link;
       $('copyMsg').textContent = '';
       winForm.hidden = true;
       $('discountCard').hidden = false;
-      $(link ? 'useCode' : 'copyCode').focus({ preventScroll: true });
+      $('copyCode').focus({ preventScroll: true });
     } catch (err) {
       formMsg.textContent = err.message;
       $('saveBtn').disabled = false;
@@ -671,15 +652,19 @@
     try {
       await navigator.clipboard.writeText(code);
       $('copyMsg').textContent = 'Koden är kopierad.';
-    } catch {
-      // Urklipp är inte tillgängligt (t.ex. i vissa iframes): markera koden så att den kan kopieras själv.
-      const range = document.createRange();
-      range.selectNodeContents($('discountCode'));
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-      $('copyMsg').textContent = 'Koden är markerad – kopiera den med Ctrl+C eller håll inne.';
-    }
+      return;
+    } catch { /* prova den äldre metoden nedan */ }
+    // Markera koden och kopiera den markerade texten (fungerar även där urklipps-API:t är blockerat).
+    const range = document.createRange();
+    range.selectNodeContents($('discountCode'));
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+    let copied = false;
+    try { copied = document.execCommand('copy'); } catch { /* inte tillgängligt */ }
+    $('copyMsg').textContent = copied
+      ? 'Koden är kopierad.'
+      : 'Koden är markerad – kopiera den med Ctrl+C eller håll inne.';
   });
 
   async function showLeaderboard(highlightName = null) {

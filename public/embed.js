@@ -33,9 +33,10 @@
 
   function createFrame(popup) {
     var frame = document.createElement('iframe');
-    // Butikens adress skickas med så att "Använd koden nu" kan lägga koden i rätt varukorg.
-    frame.src = origin + '/game?shop=' + encodeURIComponent(location.origin) + (popup ? '&popup=1' : '');
+    frame.src = origin + '/game' + (popup ? '?popup=1' : '');
     frame.title = title;
+    // Låter knappen "Kopiera koden" skriva till urklipp inifrån spelet.
+    frame.allow = 'clipboard-write';
     frame.setAttribute('scrolling', 'no');
     frame.style.cssText = 'display:block;width:100%;border:0;height:760px;overflow:hidden;background:transparent;';
     window.addEventListener('message', function (e) {

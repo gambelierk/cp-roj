@@ -16,7 +16,7 @@
       n5: 'Siffra 5', n6: 'Siffra 6', n7: 'Siffra 7', n8: 'Siffra 8',
     }],
   ];
-  const TEXT_KEYS = ['title', 'leaderboardIntro', 'shopUrl', 'discountCode', 'discountText', 'discountCodeOther', 'discountTextOther'];
+  const TEXT_KEYS = ['title', 'leaderboardIntro', 'discountCode', 'discountText', 'discountCodeOther', 'discountTextOther'];
 
   const $ = (id) => document.getElementById(id);
   const preview = $('preview');

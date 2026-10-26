@@ -104,7 +104,7 @@ Lägg till attributet `data-cp-roj-open` på valfri länk eller knapp i temat (t
 
 - När spelaren vinner skriver hen in sitt namn. Efter att namnet har sparats visas rabattkoden med en knapp för att kopiera den.
 - Den som tar **plats 1** med sin tid får koden *Överste CP-Röj*. Alla andra vinnare får *Medelmåttig CP-röjare*. Placeringen gäller den sparade omgångens tid, så den som redan ligger etta men vinner igen med en sämre tid får den andra koden.
-- Knappen **Använd koden nu** lägger in koden i Shopify-varukorgen automatiskt (via `/discount/<kod>?redirect=/cart`) och skickar spelaren dit. Den använder adressen till sidan där spelet är inbäddat, eller butikens adress om den är ifylld under *Utseende → Texter* i admin.
+- Knappen **Kopiera koden** kopierar rabattkoden så att spelaren kan klistra in den i kassan.
 - Koderna och texterna ovanför dem ändras under *Utseende → Texter* i admin. **Skapa rabattkoder med exakt samma namn i Shopify** under *Rabatter*, annars fungerar de inte i kassan.
 - Koderna finns inte i spelets publika kod, de skickas bara från servern efter en sparad vinst.
 - Placeringen avgörs av tid: snabbaste vinsten hamnar överst. Topplistan visar topp 10, med bästa tiden per namn (vid lika tid går den som spelade först före). I admin ser du alla resultat, kan ta bort olämpliga namn och exportera CSV.
