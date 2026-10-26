@@ -95,7 +95,7 @@ En knapp nere i hörnet öppnar spelet i en ruta ovanpå butiken. Rutan stängs 
 | `data-auto-open="10"` | Öppna spelet själv efter 10 sekunder. Ta bort för att bara öppna med knappen. |
 | `data-repeat-days="7"` | Öppna själv högst en gång per 7 dagar och besökare. |
 | `data-button-text` | Texten på knappen. |
-| `data-position="left"` | Knappen nere till vänster och popup-rutan vid vänsterkanten. Utan den ligger knappen till höger och rutan i mitten. |
+| `data-position="left"` | Knappen nere till vänster i stället för höger. Spelrutan öppnas alltid mitt i fönstret. |
 | `data-button="false"` | Ingen flytande knapp. |
 
 Lägg till attributet `data-cp-roj-open` på valfri länk eller knapp i temat (t.ex. en banner) så öppnar den spelet. Knappen och popupen får samma färger som titelraden och ramen i spelet.
